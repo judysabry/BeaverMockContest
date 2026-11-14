@@ -146,6 +146,19 @@ ol.plan li.now .num { border-color: var(--water); color: var(--water); }
 ol.plan li.done .num { background: var(--good); border-color: var(--good); color: var(--surface); }
 ol.plan li.done .pbody > b { color: var(--muted); }
 .pbody { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.panel.focus { border-color: var(--accent); }
+.days { display: flex; flex-direction: column; gap: 18px; }
+.day { display: flex; flex-direction: column; gap: 8px; border-top: 1.5px solid var(--line); padding-top: 14px; }
+ul.study { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+ul.study li { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; }
+ul.study li:nth-child(odd) { background: var(--bg); }
+ul.study label { display: flex; gap: 10px; align-items: baseline; flex: 1 1 320px; cursor: pointer; }
+ul.study input { width: 18px; height: 18px; flex: none; accent-color: var(--good); position: relative; top: 3px; }
+ul.study .mins { flex: none; width: 62px; font: 700 13px var(--mono); color: var(--water); }
+ul.study li.done .what { text-decoration: line-through; color: var(--muted); }
+ul.study .acts { gap: 6px; }
+details.tips { border-top: 1px solid var(--line); padding-top: 10px; }
+details.tips > summary { color: var(--ink); } details.tips[open] > summary { margin-bottom: 8px; } details.tips > div { margin-top: 10px; }
 ol.simple, ul.simple { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
 
 /* start screen */
@@ -502,9 +515,94 @@ function scoresPanel(hist) {
     <p class="small muted">Averages are the official results published by CEMC for each real contest, for the same grade level you practised. For mixed, topic and part practice, the average is added up from the official average of each question you were given. The top line is CEMC's honour-roll cutoff: 82 to 84 out of 90 depending on the year for real papers, and the same share (93%) of the points for other practice sets. In real contests about 5 to 15 students in 100 reach it, and about 2 to 5 in 100 get a perfect 90.</p>
     <div><button class="clear" data-clearhist="1">Clear my scores and history</button></div></div>`;
 }
+/* ---------- coach: what to work on now, the 3-day study plan, and tips ---------- */
+const L78 = () => ALL.filter(q => lvOf(q) === "78");
+const missOf = x => x ? x.wrong + x.blank : 0;
+function weakTopics(b) {
+  const ks = Object.keys(TOPICS).filter(k => missOf(b.topic[k])).sort((x, y) => missOf(b.topic[y]) - missOf(b.topic[x]) || missOf(b.topic[y]) / b.topic[y].n - missOf(b.topic[x]) / b.topic[x].n);
+  return ks;
+}
+function focusPanel() {
+  const b = breakdown(L78()), hist = store.get("bccMockHistory", []).filter(h => (h.level || "78") === "78"), m = missOf(b.all), items = [];
+  if (!b.all.n) return `<div class="panel focus"><h3>What to work on now</h3><p>Nothing to judge yet. Do one mixed mock and this box will tell you exactly what to fix.</p><div><button class="btn" data-plan="mixed78">Start a mixed mock</button></div></div>`;
+  const last = hist[hist.length - 1], n = last ? last.right + last.wrong + last.blank : 0, allowed = n * PER_QUESTION;
+  if (last && last.score < (last.max || 90) && last.seconds < allowed * 0.6)
+    items.push({ t: "Slow down. You are finishing far too early.", w: `Your last set took <b>${mmss(last.seconds)}</b> out of <b>${mmss(allowed)}</b> allowed, and you missed <b>${last.wrong + last.blank}</b>. ${b.rushed ? `<b>${b.rushed} of your ${m} misses</b> were answered in under one minute. ` : ""}The time you leave on the clock is where your missing points are. Give every question at least 90 seconds, and never hand in early: go back and solve Part A a second time.` });
+  else if (b.rushed >= 2)
+    items.push({ t: "Stop the quick slips.", w: `<b>${b.rushed} of your ${m} misses</b> were answered in under one minute. Re-read the last sentence of the question before you click.` });
+  if (b.slow >= 2) items.push({ t: "Get unstuck faster.", w: `<b>${b.slow}</b> of your misses used the whole 3 minutes. When you pass 2 minutes with no idea, skip, finish the rest, and come back.` });
+  const A = b.part.A;
+  if (missOf(A)) items.push({ t: "Protect Part A.", w: `You've missed <b>${missOf(A)} of ${A.n}</b> Part A questions. Those are the easiest ones and worth the most, and they have cost you <b>${A.lost} points</b>. Part A must be 5 out of 5 every time.`, act: "part78:A", label: "Practise Part A" });
+  weakTopics(b).slice(0, 2).forEach(k => items.push({ t: `Weak type: ${TOPICS[k]}.`, w: `You've missed <b>${missOf(b.topic[k])} of ${b.topic[k].n}</b>. ${TIPS[k][0]}`, act: "topic78:" + k, label: `Practise ${TOPICS[k]}` }));
+  if (b.all.wrong >= 3 && !b.all.blank) items.push({ t: "Don't guess blindly.", w: `You have <b>${b.all.wrong} wrong answers and 0 blanks</b>. A wrong answer scores 0 and a blank scores ${BLANK_POINTS}. If you truly can't cross out two choices, leave it blank. Better still, use your spare time to work it out.` });
+  if (b.all.open) items.push({ t: "Clear your missed list.", w: `<b>${b.all.open}</b> question${b.all.open === 1 ? " is" : "s are"} still waiting. Read the explanation in "My mistakes" first, then redo them.`, act: "missed78", label: `Redo ${b.all.open} missed` });
+  if (!items.length) items.push({ t: "Nothing stands out.", w: "No misses to fix right now. Keep working through the study plan below." });
+  return `<div class="panel focus"><div class="row spread"><h3>What to work on now</h3><span class="small muted">From your ${b.all.n} Grade 7/8 answers · ${b.all.right} right · ${m} missed</span></div>
+    <ol class="plan">${items.map((x, i) => `<li class="${i ? "" : "now"}"><span class="num">${i + 1}</span><div class="pbody"><b>${x.t}</b><span>${x.w}</span>${x.act ? `<div><button class="btn ${i ? "ghost" : ""} sm" data-plan="${x.act}">${esc(x.label)}</button></div>` : ""}</div></li>`).join("")}</ol></div>`;
+}
+function studyDays() {
+  const b = breakdown(L78()), wk = weakTopics(b), w1 = wk[0] || "algo", w2 = wk.find(k => k !== w1) || (w1 === "ds" ? "algo" : "ds");
+  const yr = y => [`${y} paper`, "year78:" + y], tp = k => [TOPICS[k], "topic78:" + k];
+  return [
+    { name: "Day 1", goal: "Slow down and fix your weak types", rows: [
+      [30, "Open My mistakes, read every explanation, then redo the missed list.", [["Redo missed", "missed78"]]],
+      [60, `Your weakest type, two sets. Write your working on paper for every question.`, [tp(w1)]],
+      [60, `Your second weakest type, two sets.`, [tp(w2)]],
+      [45, "Part A only. Goal: 15 out of 15, using at least 90 seconds a question.", [["Part A", "part78:A"]]],
+      [90, "Two real papers, 45 minutes each. Do not submit before 35 minutes.", [yr(2016), yr(2017)]],
+      [45, "One mixed mock to finish. Use the spare time to re-solve Part A.", [["Mixed mock", "mixed78"]]],
+      [20, "Read the explanation for everything you missed today."]] },
+    { name: "Day 2", goal: "See every kind of question", rows: [
+      [20, "Start with yesterday's missed list.", [["Redo missed", "missed78"]]],
+      [180, "Four real papers, with a 10 minute break after every two.", [yr(2018), yr(2019), yr(2020), yr(2021)]],
+      [60, "Your two weakest types again. Aim for 85% or better.", [tp(w1), tp(w2)]],
+      [45, "Part C only: the hardest questions. Draw every one.", [["Part C", "part78:C"]]],
+      [30, "Part B only.", [["Part B", "part78:B"]]],
+      [20, "Read the explanation for everything you missed today."]] },
+    { name: "Day 3", goal: "Contest day rehearsal", rows: [
+      [20, "Start with the missed list. It should be nearly empty.", [["Redo missed", "missed78"]]],
+      [90, "Two real papers under contest rules: answers only at the end.", [yr(2022), yr(2023)]],
+      [60, "Stretch: Grade 9/10 Parts A and B. They make Grade 7/8 feel easy.", [["9/10 Part A", "part910:A"], ["9/10 Part B", "part910:B"]]],
+      [90, "The two newest papers, saved for last. Goal: 85 or more on each.", [yr(2024), yr(2025)]],
+      [45, "Final mixed mock. Goal: 90 out of 90, first pass done by 30 minutes, the rest spent checking.", [["Final mock", "mixed78"]]],
+      [20, "Empty the missed list one last time, then stop and rest."]] }
+  ];
+}
+function studyPanel() {
+  const done = store.get("bccMockStudy", {}), days = studyDays();
+  const hm = t => `${Math.floor(t / 60)} h ${t % 60 ? (t % 60) + " min" : ""}`.trim();
+  return `<div class="panel"><div class="row spread"><h3>Your 3-day study plan</h3><span class="small muted">About 5½ hours a day · tick each block when it's done</span></div>
+    <p class="small muted">Set "Show if I'm right" to <b>After each question</b> on days 1 and 2 so you learn from each miss straight away. Take 10 minutes off after every hour. The weak types in this plan update by themselves from your results.</p>
+    <div class="days">${days.map((d, i) => { const total = d.rows.reduce((t, r) => t + r[0], 0), got = d.rows.filter((r, j) => done[`${i}-${j}`]).length; return `<div class="day"><div class="row spread"><b>${d.name} · ${d.goal}</b><span class="small muted"><span data-daycount="${i}">${got}</span> of ${d.rows.length} done · ${hm(total)}</span></div>
+      <ul class="study">${d.rows.map((r, j) => `<li class="${done[`${i}-${j}`] ? "done" : ""}"><label><input type="checkbox" data-study="${i}-${j}" ${done[`${i}-${j}`] ? "checked" : ""}><span class="mins">${r[0]} min</span><span class="what">${r[1]}</span></label>${r[2] ? `<span class="row acts">${r[2].map(([l, a]) => `<button class="btn ghost sm" data-plan="${a}">${esc(l)}</button>`).join("")}</span>` : ""}</li>`).join("")}</ul></div>`; }).join("")}</div>
+    <div><button class="clear" data-studyreset="1">Untick everything</button></div></div>`;
+}
+const TIPS = {
+  algo: ["Never trace steps in your head. Make a small table and write the new value after every single step.", "Follow the steps in the exact order given, even when you think you can see the ending.", "Test your method on the example in the question first. If you don't get their answer, you have misread a rule.", "Look for where a repeat stops: \"until\", \"while\" and \"each\" change everything."],
+  ds: ["Draw the line, pile or boxes on paper, and redraw it after every move.", "Mark which end things go in and which end they come out. A stack takes from the top (last in, first out). A queue takes from the front (first in, first out).", "For swaps and sorting, make a tally mark for every move so you don't lose count.", "When it asks for the final order, write the whole order out and compare it letter by letter with the choices."],
+  logic: ["Make a grid and cross off what is impossible. Don't hold clues in your head.", "Start with the clue that fixes something for certain, then use the others.", "Test each answer choice against every clue. The right one breaks none of them.", "Watch the wording: \"could be true\" and \"must be true\" are different questions."],
+  pat: ["Say the rule in words before you pick an answer.", "Check your rule against every example given, not only the first two.", "Ask what changes and what stays the same from one step to the next.", "Count carefully with your finger or a pencil mark. Most pattern mistakes are counting mistakes."],
+  graph: ["Redraw the picture as dots and lines. It is always simpler than the story.", "For the shortest or cheapest route, write the running total next to each dot as you reach it.", "Count how many lines touch each dot. Odd and even counts often decide the answer.", "Cross off each road or link as you use it."],
+  code: ["Write the full code table out and change one symbol at a time.", "For binary, write the place values 16, 8, 4, 2, 1 above the digits.", "Check your answer by going backwards: encode it again and see if you get what the question gave you.", "Look at the lengths. The number of symbols often rules out two choices straight away."],
+  opt: ["Try a tiny version of the puzzle first to see how it behaves.", "When it asks for the fewest or the most, find an answer and then ask: can I do one better?", "Grabbing the best-looking move first is not always best. Compare at least two different plans.", "Work backwards from the goal when going forwards gets messy.", "Check that your answer obeys every rule in the story, not just the main one."]
+};
+function tipsPanel() {
+  const weak = weakTopics(breakdown(L78())).slice(0, 2);
+  const keys = [...weak, ...Object.keys(TOPICS).filter(k => !weak.includes(k))];
+  return `<div class="panel"><h3>Tricks and tips for 100%</h3>
+    <ol class="simple"><li><b>Read the last sentence first.</b> It is the real question. Then read the story, and circle words like NOT, MOST, FEWEST, CANNOT and EXACTLY.</li>
+    <li><b>Use paper for everything.</b> Draw it, make a table, cross things off. Students who lose points almost always tried it in their head.</li>
+    <li><b>Prove your answer before you click.</b> Test it on the example in the question, and find a reason why each of the other three choices is wrong.</li>
+    <li><b>Use all 45 minutes.</b> First pass: answer what you can, skip anything that passes 3 minutes. Second pass: the skipped ones. Last 10 minutes: solve Part A again from scratch and compare.</li>
+    <li><b>Part A is 40 of the 90 points.</b> One careless Part A slip costs as much as two Part C questions.</li>
+    <li><b>Guess only when it pays.</b> Wrong is 0 and blank is ${BLANK_POINTS}. Guess only after crossing out two choices. For 100% you need to solve them all, so spend spare time on the one you're unsure of.</li>
+    <li><b>If two choices both look right,</b> you have missed a word in the story. Go back and read it again slowly.</li></ol>
+    <h4>Tips for each type of question</h4>
+    ${keys.map(k => `<details class="tips" ${weak.includes(k) ? "open" : ""}><summary>${TOPICS[k]}${weak.includes(k) ? ` <span class="pill no">Work on this</span>` : ""}</summary><ul class="simple">${TIPS[k].map(t => `<li>${t}</li>`).join("")}</ul><div><button class="btn ghost sm" data-plan="topic78:${k}">Practise ${TOPICS[k]}</button></div></details>`).join("")}</div>`;
+}
 function planSteps() {
-  const L78 = ALL.filter(q => lvOf(q) === "78"), L910 = ALL.filter(q => lvOf(q) === "910");
-  const hist = store.get("bccMockHistory", []), w78 = weakPoints(L78), w910 = weakPoints(L910), missed78 = missedList(L78).length;
+  const L910 = ALL.filter(q => lvOf(q) === "910");
+  const hist = store.get("bccMockHistory", []), w78 = weakPoints(L78()), w910 = weakPoints(L910), missed78 = missedList(L78()).length;
   const mixed78 = hist.filter(h => h.name === "Mixed mock contest");
   const ratio = k => { const x = w78.topic[k]; return x ? x.right / x.tried : -1; };
   const topicOK = Object.keys(TOPICS).filter(k => w78.topic[k] && w78.topic[k].tried >= 5 && ratio(k) >= 0.85);
@@ -529,16 +627,14 @@ function planSteps() {
 }
 function planPanel() {
   const steps = planSteps(), next = steps.findIndex(x => !x.done), doneN = steps.filter(x => x.done).length;
-  return `<div class="panel">
-      <div class="row spread"><h3>${next < 0 ? "Plan complete. You're ready." : `Your next step: ${steps[next].t}`}</h3><span class="small muted">${doneN} of ${steps.length} steps done</span></div>
+  return `${focusPanel()}${studyPanel()}${tipsPanel()}<div class="panel">
+      <div class="row spread"><h3>${next < 0 ? "Milestones complete. You're ready." : `Milestones to 100% · next: ${steps[next].t}`}</h3><span class="small muted">${doneN} of ${steps.length} steps done</span></div>
       <div class="meter ok"><i style="width:${pct(doneN, steps.length)}%"></i></div>
       <ol class="plan">${steps.map((x, i) => `<li class="${x.done ? "done" : i === next ? "now" : ""}">
         <span class="num">${x.done ? "✓" : i + 1}</span>
         <div class="pbody"><b>${x.t}</b><span class="small muted">${x.w}</span><span class="small"><b>${x.done ? "Done" : "Progress"}:</b> ${esc(x.prog)}</span>
         ${!x.done && x.act ? `<div><button class="btn ${i === next ? "" : "ghost"}" data-plan="${x.act}">${esc(x.label)}</button></div>` : ""}</div></li>`).join("")}</ol>
     </div>
-    <div class="panel"><h3>Every practice day (30 to 40 minutes)</h3>
-      <ol class="simple"><li><b>One timed set.</b> Do whatever "your next step" says above.</li><li><b>Fix every miss straight away.</b> Read the official explanation, then explain out loud why the right answer is right and why yours was wrong.</li><li><b>Next day, start with the missed list</b> before anything new.</li><li><b>Tell Claude "check my answers"</b> after a set. Claude reads your results file and explains the ones you still don't get.</li></ol></div>
     <div class="panel"><h3>Contest-day rules</h3>
       <ol class="simple"><li><b>Do Part A first and carefully.</b> Those 5 questions are worth 40 of the 90 points, and most lost points there are reading mistakes.</li><li><b>3 minutes a question.</b> If you're stuck at 3:00, mark it, move on, and come back with the time you saved.</li><li><b>Guess only when it pays.</b> A wrong answer is 0 and a blank is 2. A blind guess between four choices is worth 2 points on average in Part A, 1.5 in Part B and 1 in Part C, so a blind guess never beats a blank. Cross out two choices first and a guess is worth 4, 3 and 2: do it in Parts A and B.</li><li><b>Use the last 5 minutes</b> to re-read each question's last sentence and check you answered what it asked.</li></ol>
       <p class="small muted">No plan can promise 100%, but finishing all seven steps means you've seen and corrected every kind of question the contest has used in ten years.</p></div>`;
@@ -648,7 +744,7 @@ function renderHome() {
     </section>
     <section class="shelf">
       <div class="tabs" role="tablist">${TABS.map(([k, label]) => `<button role="tab" class="tab" data-tab="${k}" aria-selected="${tab === k}">${label}</button>`).join("")}</div>
-      <p class="small muted">${{ mistakes: "Every question you got wrong or left blank, saved automatically from both grade levels.", plan: "Seven steps from where you are now to a perfect paper. Progress fills in by itself as you practise.", contest: "The exact paper from each year.", topic: "Up to 15 questions on one skill. Your weakest topic is marked.", part: "15 questions at one difficulty.", scores: "Which types and sections you miss most, then every contest you've finished, newest first." }[tab]}</p>
+      <p class="small muted">${{ mistakes: "Every question you got wrong or left blank, saved automatically from both grade levels.", plan: "What to fix right now, your 3-day study plan, tips for every type of question, and the milestones to a perfect paper.", contest: "The exact paper from each year.", topic: "Up to 15 questions on one skill. Your weakest topic is marked.", part: "15 questions at one difficulty.", scores: "Which types and sections you miss most, then every contest you've finished, newest first." }[tab]}</p>
       ${tab === "plan" ? planPanel() : tab === "mistakes" ? mistakesPanel() : tab === "contest" ? `<div class="gallery years">${years}</div>` : tab === "topic" ? `<div class="gallery topics">${topics}</div>` : tab === "part" ? `<div class="gallery parts3">${parts}</div>` : hist.length ? breakdownPanel() + scoresPanel(hist) : `<div class="panel"><p class="muted">No scores yet. Finish a contest and it will show up here.</p></div>`}
     </section>
     <p class="credit">Questions and solutions © Centre for Education in Mathematics and Computing, University of Waterloo, copied here for personal practice. Originals at <a href="https://cemc.uwaterloo.ca/resources/past-contests" target="_blank" rel="noopener">cemc.uwaterloo.ca</a>.</p>`;
@@ -851,6 +947,11 @@ function renderResults() {
 app.addEventListener("change", e => {
   if (e.target.name === "mode") state.mode = e.target.value;
   else if (e.target.name === "mfilter") { state.mfilter = e.target.value; renderHome(); }
+  else if (e.target.dataset.study) {
+    const done = store.get("bccMockStudy", {}), k = e.target.dataset.study; if (e.target.checked) done[k] = 1; else delete done[k]; store.set("bccMockStudy", done);
+    e.target.closest("li").classList.toggle("done", e.target.checked);
+    const day = k.split("-")[0], c = app.querySelector(`[data-daycount="${day}"]`); if (c) c.textContent = Object.keys(done).filter(x => x.startsWith(day + "-")).length;
+  }
   else if (e.target.name === "level") { setLevel(e.target.value); renderHome(); }
   else if (e.target.name === "check") { state.check = e.target.value === "1"; store.set("bccMockCheck", state.check); }
   else if (e.target.name === "strict") state.strict = e.target.value === "1";
@@ -860,7 +961,7 @@ app.addEventListener("change", e => {
   }
 });
 app.addEventListener("click", e => {
-  const el = e.target.closest("[data-start],[data-go],[data-pick],[data-nav],[data-jump],[data-submit],[data-quit],[data-clearhist],[data-ptopic],[data-ppart],[data-pmissed],[data-pmixed],[data-pyear],[data-savefile],[data-tab],[data-check],[data-plan],[data-pause]");
+  const el = e.target.closest("[data-studyreset],[data-start],[data-go],[data-pick],[data-nav],[data-jump],[data-submit],[data-quit],[data-clearhist],[data-ptopic],[data-ppart],[data-pmissed],[data-pmixed],[data-pyear],[data-savefile],[data-tab],[data-check],[data-plan],[data-pause]");
   if (!el || el.disabled) return;
   const d = el.dataset, z = state.quiz;
   if (d.start) start();
@@ -870,6 +971,7 @@ app.addEventListener("click", e => {
     const mine = state.check; state.check = !(m === "mixed" || m === "year");   // mocks and full papers: answers only at the end
     start().then(() => { state.check = mine; });
   }
+  else if (d.studyreset) { store.set("bccMockStudy", {}); renderHome(); }
   else if (d.tab) { state.tab = d.tab; store.set("bccMockTab", d.tab); renderHome(); app.querySelector(`[data-tab="${d.tab}"]`)?.focus(); }
   else if (d.ptopic) { state.mode = "topic"; state.topic = d.ptopic; start(); }
   else if (d.ppart) { state.mode = "part"; state.part = d.ppart; start(); }
