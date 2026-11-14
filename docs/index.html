@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beaver Mock Contest</title>
+<style>
+:root {
+  --bg: #eef2f5; --surface: #ffffff; --ink: #14242e; --muted: #5a6d78; --line: #cdd8de;
+  --accent: #b5561b; --accent-ink: #ffffff; --water: #1d6f86; --water-soft: #d9ebf0;
+  --good: #1f7a4a; --good-soft: #dcf1e4; --bad: #b3261e; --bad-soft: #fbe2df; --warn: #9a6400; --warn-soft: #fbefd0;
+  --paper: #ffffff; --paper-ink: #1c2326; --paper-line: #d9e1e3;
+  --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1a20; --surface: #15262e; --ink: #e4edf0; --muted: #94aab3; --line: #2a4049;
+    --accent: #f08a4b; --accent-ink: #1a0d05; --water: #6cc3d9; --water-soft: #173b46;
+    --good: #6fd39c; --good-soft: #143a27; --bad: #ff8a80; --bad-soft: #42201d; --warn: #f2c261; --warn-soft: #3d3010;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); padding: 0 16px 72px; }
+.wrap { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-top: 28px; }
+h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: clamp(30px, 6vw, 42px); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 22px; font-weight: 800; }
+h3 { font-size: 19px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--water); }
+.eyebrow { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--water); }
+.muted { color: var(--muted); } .small { font-size: 14px; }
+button, select { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, select:focus-visible, li[data-pick]:focus-visible, summary:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+.btn { border: 0; border-radius: 10px; padding: 11px 18px; font-weight: 700; background: var(--accent); color: var(--accent-ink); }
+.btn.big { padding: 14px 26px; font-size: 18px; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn:disabled { opacity: .4; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.spread { justify-content: space-between; }
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.lede { color: var(--muted); max-width: 62ch; }
+
+/* front page gallery */
+header.top { display: flex; flex-direction: column; gap: 8px; }
+.scorebar { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 4px; }
+.scorebar span { background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 12px 3px 10px; font-size: 13px; color: var(--muted); }
+.scorebar b { font: 700 14px var(--mono); color: var(--ink); margin-right: 4px; }
+.seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.seglabel { font-size: 14px; color: var(--muted); margin-right: 4px; min-width: 118px; }
+.seg label { cursor: pointer; }
+.seg input { position: absolute; opacity: 0; }
+.seg label span { display: block; border: 1.5px solid var(--line); border-radius: 999px; padding: 5px 14px; font-size: 14px; background: var(--surface); }
+.seg input:checked + span { background: var(--water); border-color: var(--water); color: var(--surface); font-weight: 700; }
+.seg input:focus-visible + span { outline: 3px solid var(--water); outline-offset: 2px; }
+.heroes { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+.shelf { display: flex; flex-direction: column; gap: 10px; }
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); overflow-x: auto; }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 10px 16px; font-weight: 700; font-size: 16px; color: var(--muted); white-space: nowrap; border-radius: 8px 8px 0 0; }
+.tab:hover { color: var(--ink); background: var(--water-soft); }
+.tab[aria-selected="true"] { color: var(--water); border-bottom-color: var(--water); }
+.shelfhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.gallery { display: grid; gap: 10px; }
+.gallery.years { grid-template-columns: repeat(5, 1fr); }
+.gallery.topics { grid-template-columns: repeat(4, 1fr); }
+.gallery.parts3 { grid-template-columns: repeat(3, 1fr); }
+.card { position: relative; text-align: left; background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.card:hover:not(:disabled) { border-color: var(--water); transform: translateY(-2px); box-shadow: 0 6px 16px rgb(0 0 0 / .08); }
+.card:disabled { opacity: .6; cursor: default; }
+.ctitle { font-weight: 800; font-size: 26px; line-height: 1.1; letter-spacing: -0.01em; }
+.ctitle.sm { font-size: 16px; line-height: 1.25; }
+.chint { font-size: 13px; color: var(--muted); line-height: 1.4; flex: 1; }
+.cmeta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cmeta b.ok { color: var(--good); } .cmeta b.mid { color: var(--warn); } .cmeta b.low { color: var(--bad); }
+.meter { height: 6px; border-radius: 3px; background: var(--water-soft); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--water); }
+.meter.ok i { background: var(--good); } .meter.mid i { background: var(--warn); } .meter.low i { background: var(--bad); }
+.badge { position: absolute; top: -9px; right: 10px; background: var(--bad); color: var(--surface); font: 700 11px var(--mono); border-radius: 999px; padding: 2px 8px; }
+.card.hero { padding: 20px; gap: 8px; background: var(--water-soft); border-color: var(--water); }
+.card.hero .ctitle { font-size: 30px; }
+.card.hero .chint { font-size: 14px; color: var(--ink); }
+.card.hero.alt { background: var(--surface); border-color: var(--line); }
+.card.hero.alt .chint { color: var(--muted); }
+.go { align-self: flex-start; background: var(--accent); color: var(--accent-ink); font-weight: 700; border-radius: 10px; padding: 8px 16px; }
+.card.hero.alt .go { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+@media (max-width: 640px) { .heroes { grid-template-columns: 1fr; } .gallery.years { grid-template-columns: repeat(3, 1fr); } .gallery.topics { grid-template-columns: repeat(2, 1fr); } .gallery.parts3 { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+
+/* score chart */
+:root { --s-you: #1d6f86; --s-avg: #8a6d3b; --s-top: #7a3fa0; --top-soft: #efe4f7; }
+@media (prefers-color-scheme: dark) { :root { --s-you: #6cc3d9; --s-avg: #d0a968; --s-top: #c79be8; --top-soft: #33234a; } }
+.chart .ltop { fill: none; stroke: var(--s-top); stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; }
+.chart .mtop { fill: var(--s-top); stroke: var(--surface); stroke-width: 2; }
+.legend i.ktop { border-top: 3px dotted var(--s-top); }
+.vs.top { color: var(--s-top); }
+.avgline.top { background: var(--top-soft); } .avgline.top > b { color: var(--s-top); }
+.ladder { position: relative; height: 10px; border-radius: 5px; background: var(--surface); margin: 14px 6px 4px; }
+.ladder i { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; }
+.ladder i.lyoum { width: 14px; height: 14px; top: -2px; margin-left: -7px; border-radius: 50%; border: 2px solid var(--surface); }
+i.lyoum { background: var(--s-you); } i.lavgm { background: var(--s-avg); } i.ltopm { background: var(--s-top); }
+.ladderkey { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); }
+.ladderkey i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.chart { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font: 11px var(--mono); }
+.chart .lyou { fill: none; stroke: var(--s-you); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .lavg { fill: none; stroke: var(--s-avg); stroke-width: 2; stroke-dasharray: 6 5; }
+.chart .myou { fill: var(--s-you); stroke: var(--surface); stroke-width: 2; }
+.chart .mavg { fill: var(--s-avg); stroke: var(--surface); stroke-width: 2; }
+.chart .dlabel { fill: var(--ink); font: 700 13px var(--body); }
+.chart .dlabel.sub { fill: var(--muted); font-weight: 400; }
+.chart .hit { fill: transparent; cursor: crosshair; outline: none; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 26px; height: 0; border-top: 3px solid var(--s-you); }
+.legend i.kavg { border-top: 3px dashed var(--s-avg); }
+.vs { font-weight: 700; white-space: nowrap; } .vs.up { color: var(--good); } .vs.down { color: var(--bad); }
+.avgline { border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; background: var(--water-soft); }
+.avgline.up { background: var(--good-soft); } .avgline.up > b { color: var(--good); }
+.avgline.down { background: var(--bad-soft); } .avgline.down > b { color: var(--bad); }
+.avgline span { font-size: 14px; }
+
+/* mistakes */
+.mgroup { gap: 8px; }
+.mrow { border: 1.5px solid var(--line); border-radius: 10px; }
+.mrow > summary { list-style: none; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 10px 14px; color: var(--ink); font-weight: 400; }
+.mrow > summary::-webkit-details-marker { display: none; }
+.mrow > summary .mtitle { font-weight: 700; }
+.mrow > summary .mtitle::before { content: "▸ "; color: var(--muted); }
+.mrow[open] > summary .mtitle::before { content: "▾ "; }
+.mrow > summary .pill { grid-column: 2; grid-row: 1 / span 2; }
+.mrow[open] { border-color: var(--water); }
+.mbody { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.tabs { scrollbar-width: thin; }
+
+/* plan */
+ol.plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+ol.plan > li { display: flex; gap: 14px; padding: 12px; border-radius: 12px; border: 1.5px solid transparent; }
+ol.plan > li.now { border-color: var(--water); background: var(--water-soft); }
+ol.plan .num { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--mono); border: 2px solid var(--line); color: var(--muted); background: var(--surface); }
+ol.plan li.now .num { border-color: var(--water); color: var(--water); }
+ol.plan li.done .num { background: var(--good); border-color: var(--good); color: var(--surface); }
+ol.plan li.done .pbody > b { color: var(--muted); }
+.pbody { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+ol.simple { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+
+/* start screen */
+.rules { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.rule { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.rule b { display: block; font: 700 22px var(--mono); font-variant-numeric: tabular-nums; }
+.rule span { font-size: 13px; color: var(--muted); }
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opt { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.opt:has(input:checked) { border-color: var(--water); background: var(--water-soft); }
+.opt input { margin-top: 5px; accent-color: var(--water); }
+.opt small { display: block; color: var(--muted); }
+select { border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--surface); color: var(--ink); }
+table.hist { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.hist td, table.hist th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+table.hist th { color: var(--muted); font-weight: 600; }
+
+/* contest bar */
+.bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0 8px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
+.clocks { display: flex; gap: 10px; align-items: stretch; }
+.clock { flex: 1; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 12px; display: flex; flex-direction: column; min-width: 0; }
+.clock span { font-size: 12px; color: var(--muted); }
+.clock b { font: 700 24px var(--mono); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.clock .track { height: 4px; border-radius: 2px; background: var(--water-soft); overflow: hidden; margin-top: 4px; }
+.clock .track i { display: block; height: 100%; width: 100%; background: var(--water); transition: width 1s linear; }
+.clock.low { border-color: var(--warn); } .clock.low b { color: var(--warn); } .clock.low .track i { background: var(--warn); }
+.clock.out { border-color: var(--bad); background: var(--bad-soft); } .clock.out b { color: var(--bad); } .clock.out .track i { background: var(--bad); }
+.pausebtn { flex: none; background: var(--surface); white-space: nowrap; }
+.pausebox { align-items: flex-start; padding: 40px 28px; margin-top: 40px; }
+.strip { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; }
+.dot { height: 30px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--surface); font: 11px var(--mono); color: var(--muted); padding: 0; min-width: 0; }
+.dot.answered { background: var(--water-soft); color: var(--ink); border-color: var(--water-soft); }
+.dot.locked { background: repeating-linear-gradient(45deg, var(--surface), var(--surface) 4px, var(--line) 4px, var(--line) 6px); }
+.dot.dok { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.dot.dno { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.feedback { border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--warn-soft); }
+.feedback > b { color: var(--warn); font-size: 17px; }
+.feedback.ok { background: var(--good-soft); } .feedback.ok > b { color: var(--good); }
+.feedback.no { background: var(--bad-soft); } .feedback.no > b { color: var(--bad); }
+.feedback summary { color: var(--ink); }
+.feedback .paper { margin-top: 8px; }
+.dot.current { border-color: var(--accent); color: var(--ink); border-width: 2.5px; }
+.strip.std .dot:nth-child(5), .strip.std .dot:nth-child(10) { margin-right: 6px; }
+.striplabels { display: grid; grid-template-columns: repeat(3, 1fr); font: 11px var(--mono); color: var(--muted); text-align: center; }
+
+/* contest paper: stays white so the contest pictures look right */
+.paper { background: var(--paper); color: var(--paper-ink); border: 1px solid var(--paper-line); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-wrap: anywhere; }
+.paper .label { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #1d6f86; }
+.paper .pts { font: 12px var(--mono); color: #557079; }
+.paper p, .paper li { margin: 0 0 8px; }
+.paper img { max-width: 100%; height: auto; }
+.paper table { border-collapse: collapse; display: block; overflow-x: auto; max-width: 100%; margin: 6px auto; width: fit-content; }
+.paper td, .paper th { border: 1px solid var(--paper-line); padding: 4px 8px; }
+.paper .center { text-align: center; }
+.paper .row, .paper .columns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.paper .row.spread { justify-content: space-between; }
+.paper button { display: none; }
+.paper .column-two, .paper .column { flex: 1 1 220px; min-width: 0; }
+.paper ol.mc, .paper ol[type="A"] { list-style: none; padding: 0; margin: 4px 0 0; counter-reset: mc; display: flex; flex-direction: column; gap: 6px; }
+.paper ol.mc > li, .paper ol[type="A"] > li { counter-increment: mc; display: flex; gap: 10px; align-items: center; border: 1.5px solid var(--paper-line); border-radius: 10px; padding: 8px 12px; margin: 0; }
+.paper ol.mc > li > p, .paper ol[type="A"] > li > p { margin: 0; }
+.paper ol.mc > li::before, .paper ol[type="A"] > li::before { content: "(" counter(mc, upper-alpha) ")"; font: 13px var(--mono); color: #557079; flex: none; }
+.paper li[data-pick] { cursor: pointer; }
+.paper li.picked { border-color: #1d6f86 !important; background: #e3f1f5; box-shadow: inset 0 0 0 1px #1d6f86; }
+.paper li.right { border-color: #1f7a4a !important; background: #e3f5ea; }
+.paper li.wrong { border-color: #b3261e !important; background: #fde8e5; }
+.paper mjx-container { color: var(--paper-ink); }
+.lockednote { background: var(--bad-soft); color: var(--bad); border-radius: 10px; padding: 10px 14px; font-weight: 600; }
+
+.bubbles { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bubble { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font: 16px var(--mono); }
+.bubble.picked { background: var(--water); border-color: var(--water); color: var(--surface); }
+.bubble:disabled { opacity: .5; cursor: default; }
+.clear { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 4px; }
+
+/* results */
+.score { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.score .n { font: 800 64px var(--mono); line-height: 1; color: var(--water); font-variant-numeric: tabular-nums; }
+.score .of { font: 600 22px var(--mono); color: var(--muted); }
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.part { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.part b { font: 700 20px var(--mono); font-variant-numeric: tabular-nums; }
+.tally { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 600; }
+.pill.ok { background: var(--good-soft); color: var(--good); } .pill.no { background: var(--bad-soft); color: var(--bad); } .pill.blank { background: var(--warn-soft); color: var(--warn); } .pill.topic { background: var(--water-soft); color: var(--ink); font-weight: 400; }
+table.sheet { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.sheet td, table.sheet th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; font-variant-numeric: tabular-nums; }
+table.sheet th { color: var(--muted); font-weight: 600; }
+table.sheet td.ok { color: var(--good); font-weight: 700; } table.sheet td.no { color: var(--bad); font-weight: 700; } table.sheet td.blank { color: var(--warn); font-weight: 700; }
+table.sheet a { text-decoration: none; font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.item { display: flex; flex-direction: column; gap: 10px; min-width: 0; scroll-margin-top: 12px; }
+.verdict { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.verdict .ok { color: var(--good); font-weight: 700; } .verdict .no { color: var(--bad); font-weight: 700; } .verdict .blank { color: var(--warn); font-weight: 700; }
+.solution { border-left: 4px solid #1f7a4a; padding-left: 14px; display: flex; flex-direction: column; gap: 8px; }
+.solution.missed { border-left-color: #b3261e; }
+details > summary { cursor: pointer; color: #1d6f86; font-weight: 700; }
+.review { display: flex; flex-direction: column; gap: 22px; }
+.credit { font-size: 12px; color: var(--muted); }
+.loading { color: var(--muted); padding: 60px 0; text-align: center; }
+@media (max-width: 560px) { .rules { grid-template-columns: repeat(2, 1fr); } .paper { padding: 14px; } .clock b { font-size: 20px; } .dot { height: 26px; font-size: 10px; } }
+</style>
+<script>
+window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] }, svg: { fontCache: "global" }, startup: { typeset: false } };
+</script>
+<script src="q/mathjax-tex-svg.js" async></script>
+<script src="q/index.js"></script>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ---------- contest rules ---------- */
+const POINTS = { A: 8, B: 6, C: 4 };   // points for a correct answer in each part
+const BLANK_POINTS = 2;                // points for a question left blank
+const PER_QUESTION = 180;              // 3 minutes per question
+const maxOf = items => items.reduce((s, q) => s + POINTS[q.part], 0);
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const LETTERS = "ABCD";
+const TOPICS = { pat: "Patterns & sequences", logic: "Logic & deduction", algo: "Following steps & tracking state", ds: "Stacks, queues & organizing data", graph: "Graphs, maps & networks", code: "Codes & binary", opt: "Optimization & game strategy" };
+
+const ALL = window.BCC_INDEX || [];          // both grade levels
+const lvOf = q => q.lv || "78";
+let INDEX = [];                               // the questions for the grade level you're practising
+const YEARS = [...new Set(ALL.map(q => q.y))].sort((a, b) => b - a);
+const Q = {};
+window.BCC_Q = d => { Q[keyOf(d)] = d; };
+
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const mmss = s => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+const state = { level: store.get("bccMockLevel", "78") === "910" ? "910" : "78", check: store.get("bccMockCheck", true), view: "home", tab: store.get("bccMockTab", "plan"), mode: "mixed", year: YEARS[0], topic: "algo", part: "A", strict: true, quiz: null, result: null };
+
+function loadQ(q) {
+  const k = keyOf(q);
+  if (Q[k]) return Promise.resolve(Q[k]);
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = `q/${k}.js`;
+    s.onload = () => Q[k] ? res(Q[k]) : rej(new Error("empty " + k));
+    s.onerror = () => rej(new Error("missing " + k));
+    document.head.append(s);
+  });
+}
+function typeset(el) {
+  const mj = window.MathJax;
+  if (mj && mj.typesetPromise) mj.typesetPromise([el]).catch(() => {});
+  else setTimeout(() => typeset(el), 400);
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+const keyOf = q => `${q.lv === "910" ? "h" : ""}${q.y}-${q.n}`;
+function setLevel(lv) { state.level = lv; store.set("bccMockLevel", lv); INDEX = ALL.filter(q => lvOf(q) === lv); }
+const LV = () => state.level === "910" ? " · Grade 9/10" : "";
+const gradeName = lv => lv === "910" ? "Grade 9/10" : "Grade 7/8";
+/* Official Grade 7/8 averages from CEMC's results booklets: per question, and per whole contest. */
+const AVG = {}; ALL.forEach(q => { AVG[keyOf(q)] = q.avg; });
+const YEAR_AVG = window.BCC_YEAR_AVG || {};
+const YEAR_AVGS = { "78": YEAR_AVG, "910": window.BCC_YEAR_AVG_910 || {} };
+const avgFor = (items, mode) => mode === "year" && YEAR_AVGS[lvOf(items[0])][items[0].y] ? YEAR_AVGS[lvOf(items[0])][items[0].y] : Math.round(items.reduce((t, q) => t + (AVG[keyOf(q)] || 0), 0) * 10) / 10;
+/* Top students: the honour-roll cutoff CEMC published for each real contest (82 to 84 out of 90). */
+const TOP = window.BCC_TOP || {};
+const TOP_SHARE = 84 / 90, TYPICAL_SD = 17.3;
+const topFor = (items, mode) => { const t = (TOP[lvOf(items[0])] || {})[items[0].y]; return mode === "year" && t ? t.cut : Math.round(maxOf(items) * TOP_SHARE); };
+const histTop = h => h.top ?? Math.round((h.max || 90) * TOP_SHARE);
+function normCdf(z) { const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2), q = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - q : q; }
+/* Rough estimate of the share of real contestants you would have beaten (bell-curve estimate from the official mean and spread). */
+function standing(score, max, avg, items, mode) {
+  if (avg == null) return null;
+  const t = (TOP[lvOf(items[0])] || {})[items[0].y], sd = mode === "year" && t ? t.sd : TYPICAL_SD * max / 90;
+  return Math.max(1, Math.min(99, Math.round(normCdf((score - avg) / sd) * 100)));
+}
+function tier(score, max, avg, top) {
+  if (score >= max) return ["top", "★ Perfect score"];
+  if (score >= top) return ["top", "★ Honour-roll level"];
+  if (avg != null && score > avg) return ["up", "▲ Above average"];
+  return ["down", "▼ Below average"];
+}
+const histAvg = h => h.avg ?? (/^(\d{4}) contest$/.test(h.name) ? YEAR_AVG[h.name.slice(0, 4)] ?? null : null);
+function versus(score, avg) {   // text + icon, so it never relies on colour alone
+  if (avg == null) return `<span class="muted">–</span>`;
+  const d = Math.round((score - avg) * 10) / 10;
+  return d > 0 ? `<span class="vs up">▲ Above by ${d}</span>` : d < 0 ? `<span class="vs down">▼ Below by ${-d}</span>` : `<span class="vs">Same as average</span>`;
+}
+const byPart = (a, b) => a.part.localeCompare(b.part);
+const getLog = () => store.get("bccMockLog", {});   // every answer you've given, per question
+/* Take n questions from a pool, using ones you haven't seen first. */
+function take(pool, n) {
+  const seen = new Set(store.get("bccMockSeen", []));
+  return [...shuffle(pool.filter(q => !seen.has(keyOf(q)))), ...shuffle(pool.filter(q => seen.has(keyOf(q))))].slice(0, n);
+}
+/* Mixed mock: 5 real questions from each part, from different years where possible. */
+function pickMixed() {
+  const out = [];
+  for (const part of "ABC") {
+    const ranked = take(INDEX.filter(q => q.part === part), 999), chosen = [], years = new Set();
+    for (const q of ranked) if (chosen.length < 5 && !years.has(q.y)) { chosen.push(q); years.add(q.y); }
+    for (const q of ranked) if (chosen.length < 5 && !chosen.includes(q)) chosen.push(q);
+    out.push(...chosen);
+  }
+  return out;
+}
+/* Questions whose most recent answer was wrong or blank. */
+function missedList(list = INDEX) {
+  const log = getLog();
+  return list.filter(q => { const a = log[keyOf(q)]; return a && a.length && !a[a.length - 1].ok; });
+}
+function choose() {
+  const m = state.mode;
+  if (m === "mixed") return [pickMixed(), "Mixed mock contest" + LV()];
+  if (m === "year") return [INDEX.filter(q => q.y === state.year).sort((a, b) => a.n - b.n), `${state.year} contest` + LV()];
+  if (m === "topic") return [take(INDEX.filter(q => q.topic === state.topic), 15).sort(byPart), `Topic: ${TOPICS[state.topic]}` + LV()];
+  if (m === "part") return [take(INDEX.filter(q => q.part === state.part), 15), `Part ${state.part} practice` + LV()];
+  return [shuffle(missedList()).slice(0, 15).sort(byPart), "Missed questions" + LV()];
+}
+
+async function start() {
+  const [picked, name] = choose();
+  if (!picked.length) { alert("No missed questions right now. Nice!"); return; }
+  app.innerHTML = `<p class="loading">Getting your contest ready…</p>`;
+  let items;
+  try { items = await Promise.all(picked.map(q => loadQ(q))); }
+  catch (e) {
+    app.innerHTML = `<div class="panel"><h2>Couldn't load the questions</h2><p>Keep <b>index.html</b> in the same folder as the <b>q</b> folder, then open it again.</p><div><button class="btn" data-go="home">Back</button></div></div>`;
+    return;
+  }
+  state.quiz = {
+    name, mode: state.mode, strict: state.strict, check: state.check, checked: items.map(() => false), items, idx: 0, total: items.length * PER_QUESTION,
+    picks: items.map(() => null), spent: items.map(() => 0), locked: items.map(() => false),
+    elapsed: 0, last: Date.now()
+  };
+  state.view = "quiz"; renderQuiz(); window.scrollTo(0, 0);
+}
+
+/* Weak points: your newest answer to every question you've tried, grouped by topic and by part. */
+function weakPoints(list = INDEX) {
+  const log = getLog(), topic = {}, part = {};
+  let tried = 0;
+  list.forEach(q => {
+    const a = log[keyOf(q)]; if (!a || !a.length) return;
+    const last = a[a.length - 1]; tried++;
+    for (const [g, k] of [[topic, q.topic], [part, q.part]]) {
+      const x = g[k] = g[k] || { tried: 0, right: 0, secs: 0 };
+      x.tried++; x.right += last.ok ? 1 : 0; x.secs += last.spent || 0;
+    }
+  });
+  return { tried, topic, part };
+}
+const TOPIC_HINT = { pat: "Spot the rule and continue it", logic: "Clues, true or false, who did what", algo: "Follow the instructions and trace what happens", ds: "Stacks, queues, sorting and storing", graph: "Routes, maps and connections", code: "Secret codes, binary and encoding", opt: "Best move, fewest steps, winning strategy" };
+const PART_HINT = { A: "Warm-up questions", B: "Medium questions", C: "The hardest questions" };
+const tone = p => p === 100 ? "ok" : p >= 70 ? "mid" : "low";
+function statLine(x) {
+  if (!x) return `<span class="cmeta">Not tried yet</span><div class="meter"><i style="width:0"></i></div>`;
+  const p = pct(x.right, x.tried);
+  return `<span class="cmeta"><b class="${tone(p)}">${p}%</b> · ${x.right}/${x.tried} right · ${mmss(Math.round(x.secs / x.tried))} avg</span><div class="meter ${tone(p)}"><i style="width:${p}%"></i></div>`;
+}
+
+/* ---------- home ---------- */
+function scoreChart(list) {
+  const W = 720, H = 270, L = 40, R = 96, T = 16, B = 30, n = list.length;
+  const x = i => n === 1 ? L + (W - L - R) / 2 : L + i * (W - L - R) / (n - 1);
+  const y = p => T + (100 - p) * (H - T - B) / 100;
+  const you = list.map(h => pct(h.score, h.max || 90)), avg = list.map(h => histAvg(h) == null ? null : Math.round(histAvg(h) / (h.max || 90) * 100));
+  const path = v => v.map((p, i) => p == null ? "" : `${i && v[i - 1] != null ? "L" : "M"}${x(i).toFixed(1)},${y(p).toFixed(1)}`).join("");
+  const top = list.map(h => pct(histTop(h), h.max || 90));
+  const labels = [{ v: you[n - 1], text: `You ${you[n - 1]}%`, cls: "" }, { v: top[n - 1], text: `Top ${top[n - 1]}%`, cls: "sub" }];
+  if (avg[n - 1] != null) labels.push({ v: avg[n - 1], text: `Average ${avg[n - 1]}%`, cls: "sub" });
+  labels.sort((a, b) => b.v - a.v || (a.cls ? 1 : -1)); labels.forEach((l, i) => { l.y = y(l.v); if (i && l.y - labels[i - 1].y < 15) l.y = labels[i - 1].y + 15; });
+  const step = Math.max(1, Math.ceil(n / 10));
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Line chart of your score in each contest compared with the average student's score. The same numbers are in the table below.">
+    ${[0, 25, 50, 75, 100].map(g => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}"/><text class="axis" x="${L - 8}" y="${y(g) + 4}" text-anchor="end">${g}%</text>`).join("")}
+    ${list.map((h, i) => i % step === 0 || i === n - 1 ? `<text class="axis" x="${x(i)}" y="${H - 8}" text-anchor="middle">${i + 1}</text>` : "").join("")}
+    <path class="ltop" d="${path(top)}"/><path class="lavg" d="${path(avg)}"/><path class="lyou" d="${path(you)}"/>
+    ${top.map((p, i) => `<path class="mtop" d="M${x(i)},${y(p) - 5}L${x(i) + 5},${y(p) + 4}L${x(i) - 5},${y(p) + 4}Z"/>`).join("")}
+    ${avg.map((p, i) => p == null ? "" : `<rect class="mavg" x="${x(i) - 4}" y="${y(p) - 4}" width="8" height="8" transform="rotate(45 ${x(i)} ${y(p)})"/>`).join("")}
+    ${you.map((p, i) => `<circle class="myou" cx="${x(i)}" cy="${y(p)}" r="5"/>`).join("")}
+    ${labels.map(l => `<text class="dlabel ${l.cls}" x="${x(n - 1) + 12}" y="${l.y + 4}">${l.text}</text>`).join("")}
+    ${list.map((h, i) => { const w = n === 1 ? W - L - R : (W - L - R) / (n - 1); return `<rect class="hit" tabindex="0" data-tip="${esc(`Contest ${i + 1} · ${h.name} · You ${you[i]}%${avg[i] == null ? "" : ` · Average ${avg[i]}% · ${you[i] > avg[i] ? "above average ▲" : you[i] < avg[i] ? "below average ▼" : "same as average"}`} · Top ${top[i]}%${you[i] >= top[i] ? " · honour-roll level ★" : ""}`)}" data-x="${x(i)}" x="${x(i) - w / 2}" y="${T}" width="${w}" height="${H - T - B}"/>`; }).join("")}
+    <line class="cross" id="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>
+  </svg>`;
+}
+function scoresPanel(hist) {
+  const list = hist.slice(-20), judged = hist.filter(h => histAvg(h) != null), beat = judged.filter(h => h.score > histAvg(h)).length;
+  const last = hist[hist.length - 1];
+  return `<div class="panel">
+    <div class="row spread"><h3>${judged.length ? `You beat the average in ${beat} of ${judged.length} contest${judged.length === 1 ? "" : "s"}` : "Your scores"}</h3><span>Latest: <span class="vs ${tier(last.score, last.max || 90, histAvg(last), histTop(last))[0]}">${tier(last.score, last.max || 90, histAvg(last), histTop(last))[1]}</span></span></div>
+    <p>You reached the honour-roll line in <b>${hist.filter(h => h.score >= histTop(h)).length} of ${hist.length}</b> and scored a perfect paper in <b>${hist.filter(h => h.score >= (h.max || 90)).length}</b>.</p>
+    <div class="legend"><span><i class="kyou"></i>You</span><span><i class="kavg"></i>Average student on the same questions</span><span><i class="ktop"></i>Top students (honour-roll line)</span></div>
+    ${scoreChart(list)}
+    <p class="small muted" id="tip">Point at or tap the chart to see one contest. Numbers along the bottom are your contests in order${hist.length > 20 ? " (latest 20)" : ""}.</p>
+    <div class="tablewrap"><table class="hist"><tr><th>#</th><th>Date</th><th>Contest</th><th>You</th><th>Average</th><th>Did you pass it?</th><th>Top line</th><th>Where you are</th><th>Right</th><th>Wrong</th><th>Blank</th><th>Time</th></tr>
+    ${hist.map((h, i) => [h, i]).reverse().slice(0, 30).map(([h, i]) => `<tr><td>${i + 1}</td><td>${new Date(h.at).toLocaleDateString()}</td><td>${esc(h.name)}</td><td><b>${h.score}</b>/${h.max || 90} · ${pct(h.score, h.max || 90)}%</td><td>${histAvg(h) == null ? "–" : `${histAvg(h)} · ${pct(histAvg(h), h.max || 90)}%`}</td><td>${versus(h.score, histAvg(h))}</td><td>${histTop(h)}/${h.max || 90}</td><td><span class="vs ${tier(h.score, h.max || 90, histAvg(h), histTop(h))[0]}">${tier(h.score, h.max || 90, histAvg(h), histTop(h))[1]}</span>${h.score < histTop(h) ? `<br><span class="small muted">${histTop(h) - h.score} to the top line</span>` : ""}</td><td>${h.right}</td><td>${h.wrong}</td><td>${h.blank}</td><td>${mmss(h.seconds)}</td></tr>`).join("")}
+    </table></div>
+    <p class="small muted">Averages are the official results published by CEMC for each real contest, for the same grade level you practised. For mixed, topic and part practice, the average is added up from the official average of each question you were given. The top line is CEMC's honour-roll cutoff: 82 to 84 out of 90 depending on the year for real papers, and the same share (93%) of the points for other practice sets. In real contests about 5 to 15 students in 100 reach it, and about 2 to 5 in 100 get a perfect 90.</p>
+    <div><button class="clear" data-clearhist="1">Clear my scores and history</button></div></div>`;
+}
+function planSteps() {
+  const L78 = ALL.filter(q => lvOf(q) === "78"), L910 = ALL.filter(q => lvOf(q) === "910");
+  const hist = store.get("bccMockHistory", []), w78 = weakPoints(L78), w910 = weakPoints(L910), missed78 = missedList(L78).length;
+  const mixed78 = hist.filter(h => h.name === "Mixed mock contest");
+  const ratio = k => { const x = w78.topic[k]; return x ? x.right / x.tried : -1; };
+  const topicOK = Object.keys(TOPICS).filter(k => w78.topic[k] && w78.topic[k].tried >= 5 && ratio(k) >= 0.85);
+  const tried = Object.keys(TOPICS).filter(k => !topicOK.includes(k) && w78.topic[k]).sort((a, b) => ratio(a) - ratio(b));
+  const weakest = tried[0] || Object.keys(TOPICS).find(k => !topicOK.includes(k)) || "algo";
+  const yearsDone = YEARS.filter(y => hist.some(h => h.name === `${y} contest` && h.score >= 85));
+  const nextYear = [...YEARS].reverse().find(y => !yearsDone.includes(y)) || YEARS[0];
+  const pOK = k => { const x = w910.part[k]; return x && x.tried >= 10 && x.right / x.tried >= 0.8; };
+  const pTxt = k => { const x = w910.part[k]; return x ? `Part ${k}: ${pct(x.right, x.tried)}% of ${x.tried} tried` : `Part ${k}: not tried`; };
+  const full910 = hist.filter(h => /^\d{4} contest · Grade 9\/10$/.test(h.name) && h.avg != null && h.score > h.avg);
+  const next910 = [...YEARS].reverse().find(y => !hist.some(h => h.name === `${y} contest · Grade 9/10`)) || YEARS[0];
+  const last2 = mixed78.slice(-2), rehearsal = last2.length === 2 && last2.every(h => h.score === (h.max || 90) && h.seconds <= 40 * 60);
+  return [
+    { t: "Take a baseline mock", w: "One Grade 7/8 mixed mock with answers shown only at the end and the timer locked. This shows where you really are, so don't worry about the score.", prog: mixed78.length ? `First score ${pct(mixed78[0].score, mixed78[0].max || 90)}%` : "Not done yet", done: mixed78.length > 0, label: "Start the baseline mock", act: "mixed78" },
+    { t: "Bring every topic to 85% or better", w: "Practise one topic at a time with \"show if I'm right after each question\" turned on, and read the explanation for every miss. A topic counts once you've tried at least 5 of its questions.", prog: `${topicOK.length} of 7 topics there` + (topicOK.length < 7 ? ` · next: ${TOPICS[weakest]}` : ""), done: topicOK.length === 7, label: `Practise ${TOPICS[weakest]}`, act: "topic78:" + weakest },
+    { t: "Empty your missed list", w: "Every question you got wrong or left blank comes back until you get it right. This is the step that turns 80% into 100%.", prog: w78.tried < 30 ? `${missed78} waiting · counts once you've tried 30 questions (${w78.tried} so far)` : `${missed78} waiting`, done: w78.tried >= 30 && missed78 === 0, label: missed78 ? `Redo ${missed78} missed` : "Nothing to redo yet", act: missed78 ? "missed78" : "" },
+    { t: "Score 85 or more out of 90 on every real Grade 7/8 paper", w: "Ten real papers, oldest first. Answers only at the end, timer locked, just like contest day.", prog: `${yearsDone.length} of 10 papers at 85+`, done: yearsDone.length === 10, label: `Do the ${nextYear} paper`, act: "year78:" + nextYear },
+    { t: "Stretch: Grade 9/10 Parts A and B at 80%", w: "Harder questions make the Grade 7/8 ones feel easy. Start with Part A, then Part B. Counts once you've tried 10 questions in each.", prog: `${pTxt("A")} · ${pTxt("B")}`, done: pOK("A") && pOK("B"), label: `Grade 9/10 Part ${pOK("A") ? "B" : "A"}`, act: "part910:" + (pOK("A") ? "B" : "A") },
+    { t: "Stretch: beat the Grade 9/10 average on three full papers", w: "Full Grade 9/10 papers, including Part C. You don't need 100% here. Beating the average of students two grades up is the goal.", prog: `${full910.length} of 3 papers above the Grade 9/10 average`, done: full910.length >= 3, label: `Do the ${next910} Grade 9/10 paper`, act: "year910:" + next910 },
+    { t: "Dress rehearsal: two perfect mocks in a row", w: "Two Grade 7/8 mixed mocks back to back at 90 out of 90, each finished in 40 minutes or less so you have 5 minutes to re-check.", prog: mixed78.length < 2 ? "Needs your two most recent mixed mocks" : `Last two: ${last2.map(h => `${h.score}/${h.max || 90} in ${mmss(h.seconds)}`).join(" and ")}`, done: rehearsal, label: "Start a rehearsal mock", act: "mixed78" }
+  ];
+}
+function planPanel() {
+  const steps = planSteps(), next = steps.findIndex(x => !x.done), doneN = steps.filter(x => x.done).length;
+  return `<div class="panel">
+      <div class="row spread"><h3>${next < 0 ? "Plan complete. You're ready." : `Your next step: ${steps[next].t}`}</h3><span class="small muted">${doneN} of ${steps.length} steps done</span></div>
+      <div class="meter ok"><i style="width:${pct(doneN, steps.length)}%"></i></div>
+      <ol class="plan">${steps.map((x, i) => `<li class="${x.done ? "done" : i === next ? "now" : ""}">
+        <span class="num">${x.done ? "✓" : i + 1}</span>
+        <div class="pbody"><b>${x.t}</b><span class="small muted">${x.w}</span><span class="small"><b>${x.done ? "Done" : "Progress"}:</b> ${esc(x.prog)}</span>
+        ${!x.done && x.act ? `<div><button class="btn ${i === next ? "" : "ghost"}" data-plan="${x.act}">${esc(x.label)}</button></div>` : ""}</div></li>`).join("")}</ol>
+    </div>
+    <div class="panel"><h3>Every practice day (30 to 40 minutes)</h3>
+      <ol class="simple"><li><b>One timed set.</b> Do whatever "your next step" says above.</li><li><b>Fix every miss straight away.</b> Read the official explanation, then explain out loud why the right answer is right and why yours was wrong.</li><li><b>Next day, start with the missed list</b> before anything new.</li><li><b>Tell Claude "check my answers"</b> after a set. Claude reads your results file and explains the ones you still don't get.</li></ol></div>
+    <div class="panel"><h3>Contest-day rules</h3>
+      <ol class="simple"><li><b>Do Part A first and carefully.</b> Those 5 questions are worth 40 of the 90 points, and most lost points there are reading mistakes.</li><li><b>3 minutes a question.</b> If you're stuck at 3:00, mark it, move on, and come back with the time you saved.</li><li><b>Guess only when it pays.</b> A wrong answer is 0 and a blank is 2. A blind guess between four choices is worth 2 points on average in Part A, 1.5 in Part B and 1 in Part C, so a blind guess never beats a blank. Cross out two choices first and a guess is worth 4, 3 and 2: do it in Parts A and B.</li><li><b>Use the last 5 minutes</b> to re-read each question's last sentence and check you answered what it asked.</li></ol>
+      <p class="small muted">No plan can promise 100%, but finishing all seven steps means you've seen and corrected every kind of question the contest has used in ten years.</p></div>`;
+}
+/* Every question you have ever got wrong or left blank, from both grade levels. */
+function mistakeRows() {
+  const log = getLog();
+  return ALL.map(q => {
+    const a = log[keyOf(q)]; if (!a) return null;
+    const bad = a.filter(x => !x.ok); if (!bad.length) return null;
+    const lastBad = bad[bad.length - 1];
+    return { q, times: bad.length, tries: a.length, fixed: a[a.length - 1].ok, pick: lastBad.pick, at: lastBad.at };
+  }).filter(Boolean).sort((a, b) => b.at - a.at);
+}
+function mistakesPanel() {
+  const all = mistakeRows(), open = all.filter(r => !r.fixed), f = state.mfilter || "open";
+  if (!all.length) return `<div class="panel"><h3>No mistakes saved yet</h3><p class="muted">Every question you get wrong or leave blank is saved here automatically, with your answer, the right answer and the official explanation.</p></div>`;
+  const rows = f === "open" ? open : f === "fixed" ? all.filter(r => r.fixed) : all;
+  const groups = {};
+  rows.forEach(r => (groups[r.q.topic] = groups[r.q.topic] || []).push(r));
+  const here = missedList().length;
+  return `<div class="panel">
+      <div class="row spread"><h3>${open.length} still to fix · ${all.length - open.length} fixed</h3>
+        ${here ? `<button class="btn" data-pmissed="1">Redo ${here} ${gradeName(state.level)} question${here === 1 ? "" : "s"} as a quiz</button>` : ""}</div>
+      <div class="seg" role="radiogroup" aria-label="Which mistakes to show">
+        ${[["open", `Still to fix (${open.length})`], ["fixed", `Fixed (${all.length - open.length})`], ["all", `All (${all.length})`]].map(([k, l]) => `<label><input type="radio" name="mfilter" value="${k}" ${f === k ? "checked" : ""}><span>${l}</span></label>`).join("")}
+      </div>
+      <p class="small muted">Click a question to open it with your answer, the right answer and the explanation. A question moves to "Fixed" once you answer it correctly in a later quiz.</p>
+    </div>
+    ${rows.length ? Object.entries(groups).sort((a, b) => b[1].length - a[1].length).map(([t, rs]) => `<div class="panel mgroup"><div class="row spread"><h3>${TOPICS[t]}</h3><span class="small muted">${rs.length} question${rs.length === 1 ? "" : "s"}</span></div>
+      ${rs.map(r => `<details class="mrow" data-mkey="${keyOf(r.q)}" data-mpick="${r.pick ?? -1}">
+        <summary><span class="mtitle">${esc(r.q.title)}</span>
+          <span class="small muted">${r.q.y} ${gradeName(lvOf(r.q))} · Part ${r.q.part} · ${r.pick == null ? "left blank" : `you picked (${LETTERS[r.pick]})`} · missed ${r.times} time${r.times === 1 ? "" : "s"} · ${new Date(r.at).toLocaleDateString()}</span>
+          <span class="pill ${r.fixed ? "ok" : "no"}">${r.fixed ? "✓ Fixed" : "To fix"}</span></summary>
+        <div class="mbody"><p class="muted">Loading…</p></div></details>`).join("")}</div>`).join("") : `<div class="panel"><p class="muted">Nothing in this list.</p></div>`}`;
+}
+async function openMistake(el) {
+  if (!el.open || el.dataset.loaded) return;
+  el.dataset.loaded = "1";
+  const meta = ALL.find(q => keyOf(q) === el.dataset.mkey), body = el.querySelector(".mbody"), pick = +el.dataset.mpick;
+  try {
+    const q = await loadQ(meta);
+    body.innerHTML = `${questionSheet(q, `${q.y} ${gradeName(lvOf(q))} · Part ${q.part} · ${POINTS[q.part]} points`)}
+      <div class="verdict"><span class="${pick < 0 ? "blank" : "no"}">${pick < 0 ? "You left it blank" : `You picked (${LETTERS[pick]})`}</span><span>Answer: <b>(${LETTERS[q.answer]})</b></span></div>
+      <div class="paper"><div class="solution missed"><span class="label">Answer</span>${q.answerHtml}${q.explanation ? `<span class="label">Explanation</span>${q.explanation}` : ""}</div>
+      ${q.connections ? `<details><summary>Connections to computer science</summary>${q.connections}</details>` : ""}</div>`;
+    optionList(body).forEach((li, k) => { if (k === q.answer) li.classList.add("right"); else if (k === pick) li.classList.add("wrong"); });
+    typeset(body);
+  } catch (e) { body.innerHTML = `<p class="muted">Couldn't load this question. Keep index.html next to the q folder.</p>`; delete el.dataset.loaded; }
+}
+app.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("details.mrow")) openMistake(e.target); }, true);
+const TABS = [["plan", "My plan"], ["mistakes", "My mistakes"], ["contest", "By contest"], ["topic", "By topic"], ["part", "By part"], ["scores", "My scores"]];
+function renderHome() {
+  const tab = TABS.some(t => t[0] === state.tab) ? state.tab : "plan";
+  const hist = store.get("bccMockHistory", []), w = weakPoints(), missed = missedList().length;
+  const bestOf = name => { const xs = hist.filter(h => h.name === name); return xs.length ? Math.max(...xs.map(h => pct(h.score, h.max || 90))) : null; };
+  const weakest = Object.entries(w.topic).filter(([, x]) => x.right < x.tried).sort((a, b) => a[1].right / a[1].tried - b[1].right / b[1].tried)[0];
+  const mixedBest = bestOf("Mixed mock contest" + LV());
+  const years = YEARS.map(y => { const b = bestOf(`${y} contest` + LV()); return `<button class="card year" data-pyear="${y}">
+      <span class="ctitle">${y}</span>
+      <span class="cmeta">${b === null ? "Not tried yet" : `Best <b class="${tone(b)}">${b}%</b>`}</span>
+      <div class="meter ${b === null ? "" : tone(b)}"><i style="width:${b || 0}%"></i></div></button>`; }).join("");
+  const topics = Object.keys(TOPICS).map(k => `<button class="card" data-ptopic="${k}">
+      ${weakest && weakest[0] === k ? `<span class="badge">Weakest</span>` : ""}
+      <span class="ctitle sm">${TOPICS[k]}</span>
+      <span class="chint">${TOPIC_HINT[k]} · ${INDEX.filter(q => q.topic === k).length} questions</span>
+      ${statLine(w.topic[k])}</button>`).join("");
+  const parts = ["A", "B", "C"].map(p => `<button class="card" data-ppart="${p}">
+      <span class="ctitle">Part ${p}</span>
+      <span class="chint">${PART_HINT[p]} · ${POINTS[p]} points each</span>
+      ${statLine(w.part[p])}</button>`).join("");
+  app.innerHTML = `
+    <header class="top">
+      <span class="eyebrow">Beaver Computing Challenge · ${gradeName(state.level)}</span>
+      <h1>Mock Contest</h1>
+      <p class="lede">Every real ${gradeName(state.level)} question from 2016 to 2025. Pick a card to start.</p>
+      <div class="scorebar"><span><b>${POINTS.A}</b> Part A</span><span><b>${POINTS.B}</b> Part B</span><span><b>${POINTS.C}</b> Part C</span><span><b>${BLANK_POINTS}</b> left blank</span><span><b>0</b> wrong</span></div>
+    </header>
+    <div class="seg" role="radiogroup" aria-label="Grade level">
+      <span class="seglabel">Level</span>
+      <label><input type="radio" name="level" value="78" ${state.level === "78" ? "checked" : ""}><span>Grade 7/8 · your contest</span></label>
+      <label><input type="radio" name="level" value="910" ${state.level === "910" ? "checked" : ""}><span>Grade 9/10 · stretch</span></label>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="When to show answers">
+      <span class="seglabel">Show if I'm right</span>
+      <label><input type="radio" name="check" value="1" ${state.check ? "checked" : ""}><span>After each question</span></label>
+      <label><input type="radio" name="check" value="0" ${state.check ? "" : "checked"}><span>Only at the end (real contest)</span></label>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="Timer">
+      <span class="seglabel">3-minute timer</span>
+      <label><input type="radio" name="strict" value="1" ${state.strict ? "checked" : ""}><span>Locks at 3:00</span></label>
+      <label><input type="radio" name="strict" value="0" ${state.strict ? "" : "checked"}><span>Warning only</span></label>
+    </div>
+    <section class="heroes">
+      <button class="card hero" data-pmixed="1">
+        <span class="eyebrow">The full experience</span>
+        <span class="ctitle">Mixed mock contest</span>
+        <span class="chint">15 questions, 5 from each part, drawn from different years. 45 minutes. A new mix every time.</span>
+        <span class="row spread"><span class="go">Start →</span><span class="cmeta">${mixedBest === null ? "" : `Best ${mixedBest}%`}</span></span>
+      </button>
+      <button class="card hero alt" data-pmissed="1" ${missed ? "" : "disabled"}>
+        <span class="eyebrow">Road to 100%</span>
+        <span class="ctitle">${missed} missed</span>
+        <span class="chint">${missed ? "Redo the questions you last got wrong or left blank. Get one right and it comes off the list." : "Questions you get wrong or leave blank will wait here for a second try."}</span>
+        <span class="go">${missed ? "Redo them →" : "Nothing to redo"}</span>
+      </button>
+    </section>
+    <section class="shelf">
+      <div class="tabs" role="tablist">${TABS.map(([k, label]) => `<button role="tab" class="tab" data-tab="${k}" aria-selected="${tab === k}">${label}</button>`).join("")}</div>
+      <p class="small muted">${{ mistakes: "Every question you got wrong or left blank, saved automatically from both grade levels.", plan: "Seven steps from where you are now to a perfect paper. Progress fills in by itself as you practise.", contest: "The exact paper from each year.", topic: "Up to 15 questions on one skill. Your weakest topic is marked.", part: "15 questions at one difficulty.", scores: "Every contest you've finished, newest first." }[tab]}</p>
+      ${tab === "plan" ? planPanel() : tab === "mistakes" ? mistakesPanel() : tab === "contest" ? `<div class="gallery years">${years}</div>` : tab === "topic" ? `<div class="gallery topics">${topics}</div>` : tab === "part" ? `<div class="gallery parts3">${parts}</div>` : hist.length ? scoresPanel(hist) : `<div class="panel"><p class="muted">No scores yet. Finish a contest and it will show up here.</p></div>`}
+    </section>
+    <p class="credit">Questions and solutions © Centre for Education in Mathematics and Computing, University of Waterloo, copied here for personal practice. Originals at <a href="https://cemc.uwaterloo.ca/resources/past-contests" target="_blank" rel="noopener">cemc.uwaterloo.ca</a>.</p>`;
+}
+
+/* ---------- contest ---------- */
+function questionSheet(q, label, right) {
+  return `<div class="paper">
+    <div class="row spread"><span class="label">${label}</span>${right || ""}</div>
+    <h3>${esc(q.title)}</h3>
+    ${q.story ? `<div>${q.story}</div>` : ""}
+    ${q.question ? `<div class="label">Question</div><div class="qtext">${q.question}</div>` : ""}
+  </div>`;
+}
+const optionList = root => { const l = root.querySelectorAll(".qtext ol.mc, .qtext ol[type='A']"); return l.length === 1 ? [...l[0].children].slice(0, 4) : []; };
+
+function renderQuiz() {
+  const z = state.quiz, i = z.idx, q = z.items[i], locked = z.locked[i];
+  if (z.paused) {
+    app.innerHTML = `<div class="panel pausebox"><span class="eyebrow">${esc(z.name)}</span><h1>Paused</h1>
+      <p class="muted">Both clocks are stopped and the question is hidden. You're on question ${i + 1} of ${z.items.length}, with ${mmss(z.total - Math.floor(z.elapsed))} left in the contest.</p>
+      <div><button class="btn big" data-pause="1" id="resume">Resume</button></div></div>`;
+    document.getElementById("resume").focus();
+    return;
+  }
+  const reveal = z.check && locked, fk = z.picks[i] === null ? "blank" : z.picks[i] === q.answer ? "ok" : "no";
+  const std = z.items.length === 15 && z.items.map(x => x.part).join("") === "AAAAABBBBBCCCCC";
+  app.innerHTML = `
+    <div class="bar">
+      <div class="clocks">
+        <div class="clock" id="cq"><span>This question</span><b id="tq"></b><div class="track"><i id="bq"></i></div></div>
+        <div class="clock" id="ct"><span>Whole contest</span><b id="tt"></b><div class="track"><i id="bt"></i></div></div>
+        <button class="btn ghost pausebtn" data-pause="1" aria-label="Pause the contest">❚❚ Pause</button>
+      </div>
+      <div class="strip ${std ? "std" : ""}" style="grid-template-columns:repeat(${z.items.length},1fr)">${z.items.map((x, k) => `<button class="dot" data-jump="${k}" aria-label="Question ${k + 1}">${k + 1}</button>`).join("")}</div>
+      ${std ? `<div class="striplabels"><span>Part A · ${POINTS.A} pts</span><span>Part B · ${POINTS.B} pts</span><span>Part C · ${POINTS.C} pts</span></div>` : ""}
+    </div>
+    ${locked && !z.checked[i] ? `<div class="lockednote">Time's up for this question. It's locked${z.picks[i] === null ? " as blank (2 points)" : ` with your answer (${LETTERS[z.picks[i]]})`}.</div>` : ""}
+    ${questionSheet(q, `Part ${q.part} · Question ${i + 1} of ${z.items.length}`, `<span class="pts">${POINTS[q.part]} points</span>`)}
+    <div class="panel">
+      <div class="bubbles"><span class="muted small">Your answer</span>
+        ${[0, 1, 2, 3].map(k => `<button class="bubble" data-pick="${k}" ${locked ? "disabled" : ""}>${LETTERS[k]}</button>`).join("")}
+        ${locked ? "" : `<button class="clear" data-pick="-1">Leave blank</button>`}
+      </div>
+      ${reveal ? `<div class="feedback ${fk}" role="status">
+          <b>${fk === "ok" ? `✓ Correct! +${POINTS[q.part]} points` : fk === "no" ? `✗ Not quite. You picked (${LETTERS[z.picks[i]]}), the answer is (${LETTERS[q.answer]}). 0 points` : `– Left blank. The answer is (${LETTERS[q.answer]}). +${BLANK_POINTS} points`}</b>
+          <details ${fk === "ok" ? "" : "open"}><summary>Why (${LETTERS[q.answer]}) is right</summary><div class="paper">${q.answerHtml}${q.explanation || ""}</div></details>
+        </div>` : ""}
+      <div class="row spread">
+        <button class="btn ghost" data-nav="-1" ${i === 0 ? "disabled" : ""}>← Back</button>
+        <span class="row">
+        ${z.check && !locked ? `<button class="btn" data-check="1" id="checkbtn">Check my answer</button>` : ""}
+        ${i < z.items.length - 1 ? `<button class="btn ${z.check && !locked ? "ghost" : ""}" data-nav="1">${z.check && !locked ? "Skip →" : "Next →"}</button>` : `<button class="btn ${z.check && !locked ? "ghost" : ""}" data-submit="1">${z.check ? "Finish and see my score" : "Submit contest"}</button>`}
+        </span>
+      </div>
+    </div>
+    <div class="row spread"><button class="clear" data-quit="1">Quit without scoring</button>${i < z.items.length - 1 ? `<button class="btn ghost" data-submit="1">Submit contest now</button>` : ""}</div>`;
+  if (!locked) optionList(app).forEach((li, k) => { li.dataset.pick = k; li.tabIndex = 0; });
+  if (reveal) optionList(app).forEach((li, k) => { if (k === q.answer) li.classList.add("right"); else if (k === z.picks[i]) li.classList.add("wrong"); });
+  paintPick(); paintClocks(); typeset(app);
+}
+function paintPick() {
+  const z = state.quiz; if (!z) return;
+  const p = z.picks[z.idx];
+  app.querySelectorAll(".bubble").forEach((b, k) => { b.classList.toggle("picked", p === k); b.setAttribute("aria-pressed", p === k); });
+  optionList(app).forEach((li, k) => li.classList.toggle("picked", p === k && !(z.check && z.locked[z.idx])));
+  const cb = document.getElementById("checkbtn"); if (cb) cb.textContent = p === null ? "Check (leave blank)" : `Check my answer (${LETTERS[p]})`;
+  app.querySelectorAll(".dot").forEach((d, k) => {
+    d.classList.toggle("answered", z.picks[k] !== null && !(z.check && z.locked[k]));
+    d.classList.toggle("dok", z.check && z.locked[k] && z.picks[k] === z.items[k].answer);
+    d.classList.toggle("dno", z.check && z.locked[k] && z.picks[k] !== null && z.picks[k] !== z.items[k].answer);
+    d.classList.toggle("locked", z.locked[k]);
+    d.classList.toggle("current", k === z.idx);
+  });
+}
+function paintClocks() {
+  const z = state.quiz, tq = document.getElementById("tq"); if (!z || !tq) return;
+  const left = PER_QUESTION - Math.floor(z.spent[z.idx]), total = z.total - Math.floor(z.elapsed);
+  const cq = document.getElementById("cq"), ct = document.getElementById("ct");
+  tq.textContent = left >= 0 ? mmss(left) : (z.strict ? "0:00" : "+" + mmss(-left));
+  document.getElementById("bq").style.width = Math.max(0, left / PER_QUESTION * 100) + "%";
+  cq.classList.toggle("low", left <= 30 && left > 0); cq.classList.toggle("out", left <= 0);
+  document.getElementById("tt").textContent = mmss(total);
+  document.getElementById("bt").style.width = Math.max(0, total / z.total * 100) + "%";
+  ct.classList.toggle("low", total <= 300 && total > 60); ct.classList.toggle("out", total <= 60);
+}
+function tick() {
+  const z = state.quiz; if (state.view !== "quiz" || !z) return;
+  if (z.paused) { z.last = Date.now(); return; }
+  const now = Date.now(), dt = Math.min(5, (now - z.last) / 1000);   // a sleeping laptop doesn't eat your time
+  z.last = now; z.elapsed += dt;
+  if (!z.locked[z.idx]) z.spent[z.idx] += dt;
+  if (z.elapsed >= z.total) return finish(true);
+  if (z.strict && !z.locked[z.idx] && z.spent[z.idx] >= PER_QUESTION) {
+    z.locked[z.idx] = true;
+    if (z.check) { renderQuiz(); return; }   // stay here and show whether you were right
+    const order = z.items.map((_, k) => (z.idx + 1 + k) % z.items.length);
+    const next = order.find(k => !z.locked[k]);
+    if (next === undefined) return finish(true);
+    z.idx = next; renderQuiz(); window.scrollTo(0, 0); return;
+  }
+  paintClocks();
+}
+setInterval(tick, 250);
+
+function pointsFor(q, pick) { return pick === null ? BLANK_POINTS : pick === q.answer ? POINTS[q.part] : 0; }
+
+function finish(timeUp) {
+  const z = state.quiz;
+  const rows = z.items.map((q, i) => ({ q, i, pick: z.picks[i], spent: Math.round(z.spent[i]), pts: pointsFor(q, z.picks[i]), kind: z.picks[i] === null ? "blank" : z.picks[i] === q.answer ? "ok" : "no" }));
+  const r = {
+    name: z.name, mode: z.mode, level: lvOf(z.items[0]), timeUp, rows, at: Date.now(), seconds: Math.min(z.total, Math.round(z.elapsed)),
+    score: rows.reduce((s, x) => s + x.pts, 0), max: maxOf(z.items), avg: avgFor(z.items, z.mode), top: topFor(z.items, z.mode),
+    right: rows.filter(x => x.kind === "ok").length, wrong: rows.filter(x => x.kind === "no").length, blank: rows.filter(x => x.kind === "blank").length
+  };
+  r.beat = standing(r.score, r.max, r.avg, z.items, z.mode);
+  state.result = r; state.quiz = null;
+  const hist = store.get("bccMockHistory", []);
+  hist.push({ at: r.at, name: r.name, level: r.level, score: r.score, max: r.max, avg: r.avg, top: r.top, beat: r.beat, right: r.right, wrong: r.wrong, blank: r.blank, seconds: r.seconds });
+  store.set("bccMockHistory", hist);
+  const log = getLog(), seen = new Set(store.get("bccMockSeen", []));
+  rows.forEach(x => { const k = keyOf(x.q); (log[k] = log[k] || []).push({ at: r.at, pick: x.pick, ok: x.kind === "ok", spent: x.spent }); seen.add(k); });
+  store.set("bccMockLog", log); store.set("bccMockSeen", [...seen]);
+  saveResultFile(r);
+  state.view = "results"; renderResults(); window.scrollTo(0, 0);
+}
+/* Saves a small results file to your Downloads folder so Claude can read your answers. */
+function saveResultFile(r) {
+  try {
+    const d = new Date(r.at), two = n => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}`;
+    const data = {
+      app: "beaver-mock-contest", finished: d.toISOString(), contest: r.name, mode: r.mode, gradeLevel: gradeName(r.level), timeRanOut: r.timeUp,
+      score: r.score, max: r.max, percent: pct(r.score, r.max), averageStudentScore: r.avg, beatAverage: r.score > r.avg, honourRollLine: r.top, reachedHonourRollLine: r.score >= r.top, estimatedPercentBeaten: r.beat, right: r.right, wrong: r.wrong, blank: r.blank, secondsUsed: r.seconds,
+      questions: r.rows.map(x => ({ number: x.i + 1, year: x.q.y, yearQuestion: x.q.n, part: x.q.part, topic: x.q.topic, title: x.q.title, picked: x.pick === null ? null : LETTERS[x.pick], answer: LETTERS[x.q.answer], result: x.kind === "ok" ? "correct" : x.kind === "no" ? "wrong" : "blank", points: x.pts, averageStudentPoints: AVG[keyOf(x.q)], seconds: x.spent }))
+    };
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
+    a.download = `beaver-result-${stamp}.json`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) {}
+}
+
+/* ---------- results ---------- */
+function renderResults() {
+  const r = state.result;
+  const word = { ok: "Correct", no: "Wrong", blank: "Blank" };
+  const part = p => { const xs = r.rows.filter(x => x.q.part === p); return `<div class="part"><span class="muted small">Part ${p} · ${POINTS[p]} pts each</span><br><b>${xs.reduce((s, x) => s + x.pts, 0)}</b><span class="muted"> / ${xs.length * POINTS[p]}</span><br><span class="small muted">${xs.filter(x => x.kind === "ok").length} right · ${xs.filter(x => x.kind === "no").length} wrong · ${xs.filter(x => x.kind === "blank").length} blank</span></div>`; };
+  const topics = {};
+  r.rows.filter(x => x.kind !== "ok").forEach(x => topics[x.q.topic] = (topics[x.q.topic] || 0) + 1);
+  const ordered = [...r.rows.filter(x => x.kind === "no"), ...r.rows.filter(x => x.kind === "blank"), ...r.rows.filter(x => x.kind === "ok")];
+  const lostToGuess = r.rows.filter(x => x.kind === "no").length * BLANK_POINTS;
+  app.innerHTML = `
+    <div class="row spread"><button class="btn ghost" data-go="home">← Home</button><button class="btn" data-start="1">Another one like this</button></div>
+    <section class="panel">
+      <span class="eyebrow">${esc(r.name)} · ${r.timeUp ? "time ran out" : "submitted"} at ${mmss(r.seconds)}</span>
+      <div class="score"><span class="n">${pct(r.score, r.max)}%</span><span class="of">${r.score} / ${r.max} points</span></div>
+      <div class="avgline ${r.score > r.avg ? "up" : r.score < r.avg ? "down" : ""}">
+        <b>${r.score > r.avg ? "▲ You beat the average" : r.score < r.avg ? "▼ Below the average this time" : "Same as the average"}</b>
+        <span>The average ${gradeName(r.level)} student scored <b>${r.avg}</b> / ${r.max} (${pct(r.avg, r.max)}%) on these questions in the real contest. You scored ${r.score}, ${r.score >= r.avg ? Math.round((r.score - r.avg) * 10) / 10 + " above" : Math.round((r.avg - r.score) * 10) / 10 + " below"}.</span>
+      </div>
+      <div class="avgline ${r.score >= r.top ? "top" : ""}">
+        <b>${r.score >= r.max ? "★ Perfect score. That's the very top." : r.score >= r.top ? "★ Honour-roll level" : `Top students: ${r.top - r.score} more point${r.top - r.score === 1 ? "" : "s"} to reach the honour-roll line`}</b>
+        <span>Top students usually score <b>${r.top}</b> / ${r.max} or more (${pct(r.top, r.max)}%). That's the honour-roll line${r.mode === "year" ? " for this real contest" : ", scaled from the usual 84 out of 90"}. ${r.score >= r.max ? "In the real contest only about 2 to 5 students in 100 get a perfect score." : `You'd have scored higher than roughly ${r.beat} in 100 students (an estimate).`}</span>
+        <div class="ladder" aria-hidden="true"><i class="lavgm" style="left:${pct(r.avg, r.max)}%"></i><i class="ltopm" style="left:${pct(r.top, r.max)}%"></i><i class="lyoum" style="left:${pct(r.score, r.max)}%"></i></div>
+        <div class="ladderkey small"><span><i class="lyoum"></i>You ${r.score}</span><span><i class="lavgm"></i>Average ${r.avg}</span><span><i class="ltopm"></i>Top ${r.top}</span></div>
+      </div>
+      <div class="row"><span class="small muted">A results file was saved to your Downloads folder so Claude can check your answers.</span><button class="clear" data-savefile="1">Save it again</button></div>
+      <div class="tally"><span class="pill ok">${r.right} correct</span><span class="pill no">${r.wrong} wrong · 0 pts each</span><span class="pill blank">${r.blank} blank · ${BLANK_POINTS} pts each</span></div>
+      <div class="parts">${["A", "B", "C"].filter(p => r.rows.some(x => x.q.part === p)).map(part).join("")}</div>
+      ${r.wrong ? `<p class="small muted">Your ${r.wrong} wrong answer${r.wrong === 1 ? "" : "s"} would have been worth ${lostToGuess} points left blank.</p>` : ""}
+      ${Object.keys(topics).length ? `<div><p class="small muted" style="margin-bottom:6px">Topics to practise (questions not answered correctly):</p><div class="tally">${Object.entries(topics).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<span class="pill topic">${TOPICS[t]} · ${n}</span>`).join("")}</div></div>
+        <div><button class="btn" data-pmissed="1">Redo the ones I missed</button></div>` : `<p><b>100%. Every answer right.</b> Excellent work.</p>`}
+    </section>
+    <section class="panel">
+      <h2>Answer sheet</h2>
+      <div class="tablewrap"><table class="sheet"><tr><th>Q</th><th>Part</th><th>You</th><th>Answer</th><th>Result</th><th>Points</th><th>Time</th><th>From</th></tr>
+      ${r.rows.map(x => `<tr><td><a href="#q${x.i}">${x.i + 1}</a></td><td>${x.q.part}</td><td>${x.pick === null ? "–" : LETTERS[x.pick]}</td><td>${LETTERS[x.q.answer]}</td><td class="${x.kind}">${word[x.kind]}</td><td>${x.pts}</td><td>${mmss(x.spent)}</td><td>${x.q.y} Q${x.q.n}</td></tr>`).join("")}
+      </table></div>
+    </section>
+    <h2>Solutions</h2>
+    <div class="review">${ordered.map(x => `
+      <article class="item" id="q${x.i}" data-pickv="${x.pick ?? -1}" data-ans="${x.q.answer}">
+        ${questionSheet(x.q, `Question ${x.i + 1} · Part ${x.q.part} · from the ${x.q.y} ${gradeName(lvOf(x.q))} contest`)}
+        <div class="verdict"><span class="${x.kind}">${x.kind === "ok" ? "Correct" : x.kind === "blank" ? "Left blank" : `You picked (${LETTERS[x.pick]})`} · ${x.pts} point${x.pts === 1 ? "" : "s"}</span><span>Answer: <b>(${LETTERS[x.q.answer]})</b></span><span class="muted small">${TOPICS[x.q.topic]}</span></div>
+        <div class="paper">
+          <div class="solution ${x.kind === "ok" ? "" : "missed"}"><span class="label">Answer</span>${x.q.answerHtml}${x.q.explanation ? `<span class="label">Explanation</span>${x.q.explanation}` : ""}</div>
+          ${x.q.connections ? `<details><summary>Connections to computer science</summary>${x.q.connections}</details>` : ""}
+        </div>
+      </article>`).join("")}</div>`;
+  app.querySelectorAll(".item").forEach(el => {
+    const pick = +el.dataset.pickv, ans = +el.dataset.ans;
+    optionList(el).forEach((li, k) => { if (k === ans) li.classList.add("right"); else if (k === pick) li.classList.add("wrong"); });
+  });
+  typeset(app);
+}
+
+/* ---------- events ---------- */
+app.addEventListener("change", e => {
+  if (e.target.name === "mode") state.mode = e.target.value;
+  else if (e.target.name === "mfilter") { state.mfilter = e.target.value; renderHome(); }
+  else if (e.target.name === "level") { setLevel(e.target.value); renderHome(); }
+  else if (e.target.name === "check") { state.check = e.target.value === "1"; store.set("bccMockCheck", state.check); }
+  else if (e.target.name === "strict") state.strict = e.target.value === "1";
+  else if (["year", "topic", "part"].includes(e.target.id)) {
+    const id = e.target.id; state[id] = id === "year" ? +e.target.value : e.target.value; state.mode = id;
+    const r = app.querySelector(`input[name="mode"][value="${id}"]`); if (r) r.checked = true;
+  }
+});
+app.addEventListener("click", e => {
+  const el = e.target.closest("[data-start],[data-go],[data-pick],[data-nav],[data-jump],[data-submit],[data-quit],[data-clearhist],[data-ptopic],[data-ppart],[data-pmissed],[data-pmixed],[data-pyear],[data-savefile],[data-tab],[data-check],[data-plan],[data-pause]");
+  if (!el || el.disabled) return;
+  const d = el.dataset, z = state.quiz;
+  if (d.start) start();
+  else if (d.plan) {
+    const [a, v] = d.plan.split(":"), lv = a.endsWith("910") ? "910" : "78", m = a.replace(/78|910/, "");
+    setLevel(lv); state.mode = m; if (m === "topic") state.topic = v; if (m === "part") state.part = v; if (m === "year") state.year = +v;
+    const mine = state.check; state.check = !(m === "mixed" || m === "year");   // mocks and full papers: answers only at the end
+    start().then(() => { state.check = mine; });
+  }
+  else if (d.tab) { state.tab = d.tab; store.set("bccMockTab", d.tab); renderHome(); app.querySelector(`[data-tab="${d.tab}"]`)?.focus(); }
+  else if (d.ptopic) { state.mode = "topic"; state.topic = d.ptopic; start(); }
+  else if (d.ppart) { state.mode = "part"; state.part = d.ppart; start(); }
+  else if (d.pmixed) { state.mode = "mixed"; start(); }
+  else if (d.pyear) { state.mode = "year"; state.year = +d.pyear; start(); }
+  else if (d.pmissed) { state.mode = "missed"; start(); }
+  else if (d.savefile) saveResultFile(state.result);
+  else if (d.go) { state.view = d.go; renderHome(); window.scrollTo(0, 0); }
+  else if (d.clearhist) { if (confirm("Clear your past scores and weak-point history?")) { store.set("bccMockHistory", []); store.set("bccMockLog", {}); renderHome(); } }
+  else if (!z) return;
+  else if (d.pick !== undefined) {
+    if (z.locked[z.idx]) return;
+    const p = +d.pick; z.picks[z.idx] = (p < 0 || z.picks[z.idx] === p) ? null : p; paintPick();
+  }
+  else if (d.pause) { z.paused = !z.paused; z.last = Date.now(); renderQuiz(); window.scrollTo(0, 0); }
+  else if (d.check) { z.checked[z.idx] = true; z.locked[z.idx] = true; const top = window.scrollY; renderQuiz(); window.scrollTo(0, top); app.querySelector(".feedback")?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  else if (d.nav) { z.idx += +d.nav; renderQuiz(); window.scrollTo(0, 0); }
+  else if (d.jump !== undefined) { z.idx = +d.jump; renderQuiz(); window.scrollTo(0, 0); }
+  else if (d.submit) {
+    const blank = z.picks.filter((p, k) => p === null && !(z.check && z.locked[k])).length;
+    if (confirm(blank ? `You've left ${blank} question${blank === 1 ? "" : "s"} blank (${BLANK_POINTS} points each). Submit the contest?` : "Submit the contest?")) finish(false);
+    else z.last = Date.now();
+  }
+  else if (d.quit) { if (confirm("Quit this contest? It won't be scored.")) { state.quiz = null; state.view = "home"; renderHome(); window.scrollTo(0, 0); } else z.last = Date.now(); }
+});
+function showTip(e) {
+  const el = e.target.closest && e.target.closest(".hit"), tip = document.getElementById("tip"), cross = document.getElementById("cross");
+  if (!el || !tip) return;
+  tip.textContent = el.dataset.tip;
+  cross.setAttribute("x1", el.dataset.x); cross.setAttribute("x2", el.dataset.x); cross.setAttribute("visibility", "visible");
+}
+app.addEventListener("pointerover", showTip); app.addEventListener("focusin", showTip); app.addEventListener("click", showTip);
+app.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("li[data-pick]")) { e.preventDefault(); e.target.click(); }
+});
+window.addEventListener("beforeunload", e => { if (state.quiz) { e.preventDefault(); e.returnValue = ""; } });
+
+setLevel(state.level);
+if (!INDEX.length) app.innerHTML = `<div class="panel"><h2>Questions not found</h2><p>Keep <b>index.html</b> in the same folder as the <b>q</b> folder, then open it again.</p></div>`;
+else renderHome();
+</script>
+</body>
+</html>
