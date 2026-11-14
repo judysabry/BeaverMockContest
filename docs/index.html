@@ -146,7 +146,7 @@ ol.plan li.now .num { border-color: var(--water); color: var(--water); }
 ol.plan li.done .num { background: var(--good); border-color: var(--good); color: var(--surface); }
 ol.plan li.done .pbody > b { color: var(--muted); }
 .pbody { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-ol.simple { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+ol.simple, ul.simple { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
 
 /* start screen */
 .rules { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -162,6 +162,9 @@ select { border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px;
 table.hist { border-collapse: collapse; width: 100%; font-size: 14px; }
 table.hist td, table.hist th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 table.hist th { color: var(--muted); font-weight: 600; }
+table.bd td { vertical-align: middle; } table.bd .meter { min-width: 90px; margin-top: 4px; } table.bd .pill { white-space: nowrap; }
+.btn.sm { padding: 5px 12px; font-size: 14px; }
+.panel h4 { margin: 6px 0 0; font-size: 15px; }
 
 /* contest bar */
 .bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0 8px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
@@ -432,6 +435,54 @@ function scoreChart(list) {
     <line class="cross" id="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>
   </svg>`;
 }
+/* Where you lose points: every answer you've ever given (repeats included), split by question type and by section. */
+function breakdown(list = INDEX) {
+  const log = getLog(), mk = () => ({ n: 0, right: 0, wrong: 0, blank: 0, lost: 0, secs: 0, open: 0 });
+  const topic = {}, part = {}, cell = {}, all = mk();
+  let rushed = 0, slow = 0;
+  list.forEach(q => {
+    const a = log[keyOf(q)]; if (!a || !a.length) return;
+    const gs = [all, topic[q.topic] ||= mk(), part[q.part] ||= mk(), cell[q.topic + q.part] ||= mk()];
+    a.forEach(x => {
+      const kind = x.ok ? "right" : x.pick == null ? "blank" : "wrong", lost = x.ok ? 0 : POINTS[q.part] - (kind === "blank" ? BLANK_POINTS : 0);
+      gs.forEach(g => { g.n++; g[kind]++; g.secs += x.spent || 0; g.lost += lost; });
+      if (kind === "wrong" && (x.spent || 0) < 60) rushed++;
+      if (!x.ok && (x.spent || 0) >= PER_QUESTION - 5) slow++;
+    });
+    if (!a[a.length - 1].ok) gs.forEach(g => g.open++);
+  });
+  return { all, topic, part, cell, rushed, slow };
+}
+function breakdownPanel() {
+  const b = breakdown(), miss = x => x.wrong + x.blank;
+  if (!b.all.n) return "";
+  const rank = (keys, g) => keys.filter(k => g[k]).sort((x, y) => miss(g[y]) - miss(g[x]) || miss(g[y]) / g[y].n - miss(g[x]) / g[x].n || g[y].lost - g[x].lost);
+  const tk = rank(Object.keys(TOPICS), b.topic), pk = rank(["A", "B", "C"], b.part);
+  const worstT = tk.find(k => miss(b.topic[k])), worstP = pk.find(k => miss(b.part[k]));
+  const table = (keys, g, name, attr, untried, worst) => `<div class="tablewrap"><table class="hist bd"><tr><th>${attr === "ptopic" ? "Type of question" : "Section"}</th><th>Answered</th><th>Right</th><th>Wrong</th><th>Blank</th><th>Missed</th><th>Points lost</th><th>Avg time</th><th>Still to fix</th><th></th></tr>
+    ${keys.map(k => { const x = g[k], m = miss(x), p = pct(m, x.n); return `<tr><td><b>${name(k)}</b>${k === worst ? ` <span class="pill no">Most missed</span>` : ""}</td><td>${x.n}</td><td>${x.right}</td><td>${x.wrong}</td><td>${x.blank}</td>
+      <td><span class="${m ? "vs down" : "vs up"}">${m ? `${m} of ${x.n} · ${p}%` : "None ✓"}</span><div class="meter low"><i style="width:${p}%"></i></div></td>
+      <td>${x.lost}</td><td>${mmss(Math.round(x.secs / x.n))}</td><td>${x.open || "–"}</td><td><button class="btn ghost sm" data-${attr}="${k}">Practise</button></td></tr>`; }).join("")}
+    ${untried.map(k => `<tr><td><b>${name(k)}</b></td><td colspan="8" class="muted">Not tried yet</td><td><button class="btn ghost sm" data-${attr}="${k}">Practise</button></td></tr>`).join("")}
+    </table></div>`;
+  const m = miss(b.all);
+  return `<div class="panel">
+    <div class="row spread"><h3>Where you lose points · ${gradeName(state.level)}</h3><span class="small muted">${b.all.n} answers · ${b.all.right} right · ${b.all.wrong} wrong · ${b.all.blank} blank</span></div>
+    <p>${m ? `You missed <b>${m} of ${b.all.n}</b> answers and gave away <b>${b.all.lost} points</b>. Your most-missed type is <b>${TOPICS[worstT]}</b> (${miss(b.topic[worstT])} of ${b.topic[worstT].n}), and your most-missed section is <b>Part ${worstP}</b> (${miss(b.part[worstP])} of ${b.part[worstP].n}).` : `No misses in ${b.all.n} answers so far. Keep going to fill in every type.`}</p>
+    <h4>By type of question</h4>
+    ${table(tk, b.topic, k => TOPICS[k], "ptopic", Object.keys(TOPICS).filter(k => !b.topic[k]), worstT)}
+    <h4>By section</h4>
+    ${table(pk, b.part, k => `Part ${k} · ${POINTS[k]} points`, "ppart", ["A", "B", "C"].filter(k => !b.part[k]), worstP)}
+    <h4>Type and section together</h4>
+    <div class="tablewrap"><table class="hist bd"><tr><th>Missed / answered</th><th>Part A</th><th>Part B</th><th>Part C</th></tr>
+    ${Object.keys(TOPICS).map(k => `<tr><td><b>${TOPICS[k]}</b></td>${["A", "B", "C"].map(p => { const x = b.cell[k + p]; return `<td>${!x ? `<span class="muted">–</span>` : miss(x) ? `<span class="pill no">${miss(x)} / ${x.n}</span>` : `<span class="pill ok">0 / ${x.n}</span>`}</td>`; }).join("")}</tr>`).join("")}
+    </table></div>
+    ${m ? `<h4>How the misses happened</h4>
+    <ul class="simple"><li><b>${b.rushed}</b> wrong answer${b.rushed === 1 ? " was" : "s were"} given in under 1 minute. Those are usually reading slips, so re-read the last sentence of the question before you pick.</li>
+    <li><b>${b.slow}</b> miss${b.slow === 1 ? "" : "es"} used the whole 3 minutes. Those are the ones to practise for speed.</li>
+    <li><b>${b.all.blank}</b> left blank and <b>${b.all.wrong}</b> answered wrong.</li></ul>` : ""}
+    <p class="small muted">This counts every answer you've given at this grade level, including repeats, so a question you missed twice counts twice. "Points lost" is the gap to full marks (a blank still earns ${BLANK_POINTS}). "Still to fix" is how many of those questions your latest answer still gets wrong. Switch the Level above to see the other grade.</p></div>`;
+}
 function scoresPanel(hist) {
   const list = hist.slice(-20), judged = hist.filter(h => histAvg(h) != null), beat = judged.filter(h => h.score > histAvg(h)).length;
   const last = hist[hist.length - 1];
@@ -593,8 +644,8 @@ function renderHome() {
     </section>
     <section class="shelf">
       <div class="tabs" role="tablist">${TABS.map(([k, label]) => `<button role="tab" class="tab" data-tab="${k}" aria-selected="${tab === k}">${label}</button>`).join("")}</div>
-      <p class="small muted">${{ mistakes: "Every question you got wrong or left blank, saved automatically from both grade levels.", plan: "Seven steps from where you are now to a perfect paper. Progress fills in by itself as you practise.", contest: "The exact paper from each year.", topic: "Up to 15 questions on one skill. Your weakest topic is marked.", part: "15 questions at one difficulty.", scores: "Every contest you've finished, newest first." }[tab]}</p>
-      ${tab === "plan" ? planPanel() : tab === "mistakes" ? mistakesPanel() : tab === "contest" ? `<div class="gallery years">${years}</div>` : tab === "topic" ? `<div class="gallery topics">${topics}</div>` : tab === "part" ? `<div class="gallery parts3">${parts}</div>` : hist.length ? scoresPanel(hist) : `<div class="panel"><p class="muted">No scores yet. Finish a contest and it will show up here.</p></div>`}
+      <p class="small muted">${{ mistakes: "Every question you got wrong or left blank, saved automatically from both grade levels.", plan: "Seven steps from where you are now to a perfect paper. Progress fills in by itself as you practise.", contest: "The exact paper from each year.", topic: "Up to 15 questions on one skill. Your weakest topic is marked.", part: "15 questions at one difficulty.", scores: "Which types and sections you miss most, then every contest you've finished, newest first." }[tab]}</p>
+      ${tab === "plan" ? planPanel() : tab === "mistakes" ? mistakesPanel() : tab === "contest" ? `<div class="gallery years">${years}</div>` : tab === "topic" ? `<div class="gallery topics">${topics}</div>` : tab === "part" ? `<div class="gallery parts3">${parts}</div>` : hist.length ? breakdownPanel() + scoresPanel(hist) : `<div class="panel"><p class="muted">No scores yet. Finish a contest and it will show up here.</p></div>`}
     </section>
     <p class="credit">Questions and solutions © Centre for Education in Mathematics and Computing, University of Waterloo, copied here for personal practice. Originals at <a href="https://cemc.uwaterloo.ca/resources/past-contests" target="_blank" rel="noopener">cemc.uwaterloo.ca</a>.</p>`;
 }
